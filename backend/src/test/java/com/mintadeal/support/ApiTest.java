@@ -40,13 +40,14 @@ public abstract class ApiTest {
     static void providerUrls(DynamicPropertyRegistry registry) {
         registry.add("mintadeal.integrations.razorpay-base-url", ProviderStub.INSTANCE::baseUrl);
         registry.add("mintadeal.integrations.two-factor-base-url", ProviderStub.INSTANCE::baseUrl);
+        registry.add("mintadeal.integrations.whatsapp-base-url", () -> ProviderStub.INSTANCE.baseUrl() + "/wa");
     }
 
     @BeforeEach
     void cleanDatabase() {
         ProviderStub.INSTANCE.reset();
         jdbc.execute("""
-                TRUNCATE vendor_charge, delivery_job, redemption, refund, order_event, order_line, shop_order, checkout, integration_setting,
+                TRUNCATE notification, ledger_entry, ledger_journal, payout, payout_batch, commission_rule, vendor_charge, delivery_job, redemption, refund, order_event, order_line, shop_order, checkout, integration_setting,
                          audit_event, vendor_follow, listing_fulfilment_mode, listing, vendor,
                          otp_challenge, user_role, app_user CASCADE""");
     }

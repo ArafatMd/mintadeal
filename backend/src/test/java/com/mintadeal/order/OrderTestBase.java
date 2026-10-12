@@ -10,27 +10,27 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.mintadeal.support.ApiTest;
 
-abstract class OrderTestBase extends ApiTest {
+public abstract class OrderTestBase extends ApiTest {
 
     // A customer in HSR Layout and shops a few hundred metres away.
-    static final String HSR_ADDRESS = """
+    protected static final String HSR_ADDRESS = """
             {"line":"Flat 4B, Green Residency","area":"HSR Layout","landmark":"Near BDA park",
              "latitude":12.9116,"longitude":77.6474}""";
-    static final String FAR_ADDRESS = """
+    protected static final String FAR_ADDRESS = """
             {"line":"House 9","area":"Whitefield","latitude":12.9698,"longitude":77.7500}""";
 
     @Autowired
-    JdbcTemplate jdbc;
+    protected JdbcTemplate jdbc;
 
-    record Shop(String token, String vendorId) {
+    protected record Shop(String token, String vendorId) {
     }
 
-    Shop shop(String phone, String name, String settings) throws Exception {
+    protected Shop shop(String phone, String name, String settings) throws Exception {
         String token = approvedVendor(phone, shopJson(name, 12.9121, 77.6446, settings));
         return new Shop(token, read(call(GET("/api/vendor/shop"), token, null), "$.id"));
     }
 
-    String product(Shop shop, String title, long price, Integer stock, String modes) throws Exception {
+    protected String product(Shop shop, String title, long price, Integer stock, String modes) throws Exception {
         String id = read(call(POST("/api/vendor/listings"), shop.token(), """
                 {"listingType":"PRODUCT","title":"%s","priceMinor":%d,"stock":%s,"fulfilmentModes":[%s]}"""
                 .formatted(title, price, stock == null ? "null" : stock, modes))
@@ -39,7 +39,7 @@ abstract class OrderTestBase extends ApiTest {
         return id;
     }
 
-    String offer(Shop shop, String title, long price) throws Exception {
+    protected String offer(Shop shop, String title, long price) throws Exception {
         String id = read(call(POST("/api/vendor/listings"), shop.token(), """
                 {"listingType":"OFFER","title":"%s","priceMinor":%d,"fulfilmentModes":["VENUE_QR"],"validTo":"%s"}"""
                 .formatted(title, price, Instant.now().plus(10, ChronoUnit.DAYS))).andExpect(status().isCreated()), "$.id");
@@ -47,7 +47,7 @@ abstract class OrderTestBase extends ApiTest {
         return id;
     }
 
-    static String cart(String request, String payment, String address, String modes, String... items) {
+    protected static String cart(String request, String payment, String address, String modes, String... items) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < items.length; i += 2) {
             if (i > 0) {
@@ -60,7 +60,7 @@ abstract class OrderTestBase extends ApiTest {
                 .formatted(request, sb, modes == null ? "{}" : modes, payment, address == null ? "null" : address);
     }
 
-    Integer stockOf(String listingId) {
+    protected Integer stockOf(String listingId) {
         return jdbc.queryForObject("select stock from listing where id = ?::uuid", Integer.class, listingId);
     }
 }

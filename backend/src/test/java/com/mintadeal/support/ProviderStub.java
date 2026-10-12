@@ -24,6 +24,9 @@ public final class ProviderStub {
     private final AtomicInteger links = new AtomicInteger();
     public volatile String linkStatus = "created";
     public volatile boolean smsFails = false;
+    public volatile boolean refundFails = false;
+    public volatile boolean whatsappFails = false;
+    public volatile String payoutStatus = "processing";
 
     private ProviderStub() {
         try {
@@ -43,6 +46,9 @@ public final class ProviderStub {
         requests.clear();
         linkStatus = "created";
         smsFails = false;
+        refundFails = false;
+        whatsappFails = false;
+        payoutStatus = "processing";
     }
 
     private void handle(HttpExchange ex) throws IOException {
@@ -71,10 +77,33 @@ public final class ProviderStub {
                         ? "{\"status\":\"paid\",\"payments\":[{\"payment_id\":\"pay_stub\",\"status\":\"captured\"}]}"
                         : "{\"status\":\"" + linkStatus + "\",\"payments\":[]}";
             } else if (path.endsWith("/refund")) {
-                out = "{\"id\":\"rfnd_stub\",\"status\":\"processed\"}";
+                if (refundFails) {
+                    status = 400;
+                    out = "{\"error\":{\"description\":\"The refund could not be processed\"}}";
+                } else {
+                    out = "{\"id\":\"rfnd_stub\",\"status\":\"processed\"}";
+                }
+            } else if (path.equals("/v1/contacts")) {
+                out = "{\"id\":\"cont_1\"}";
+            } else if (path.equals("/v1/fund_accounts")) {
+                out = "{\"id\":\"fa_1\"}";
+            } else if (path.equals("/v1/payouts")) {
+                out = "{\"id\":\"pout_" + links.incrementAndGet() + "\",\"status\":\"processing\"}";
+            } else if (path.startsWith("/v1/payouts/")) {
+                out = "{\"id\":\"" + path.substring("/v1/payouts/".length()) + "\",\"status\":\"" + payoutStatus
+                        + "\",\"utr\":\"UTR123456\",\"status_details\":{\"description\":\"Beneficiary bank down\"}}";
             } else {
                 status = 404;
                 out = "{}";
+            }
+        } else if (path.startsWith("/wa/")) {
+            if (whatsappFails) {
+                status = 400;
+                out = "{\"error\":{\"message\":\"Template not approved\"}}";
+            } else if (path.endsWith("/messages")) {
+                out = "{\"messages\":[{\"id\":\"wamid.stub\"}]}";
+            } else {
+                out = "{\"display_phone_number\":\"+91 80000 00000\",\"verified_name\":\"Mintadeal\"}";
             }
         } else if (path.startsWith("/API/V1/")) {
             if (path.contains("/BAL/SMS")) {

@@ -18,3 +18,5 @@ mintadeal:
   orders:
     dev-fake-gateway: true
     sweep-interval-ms: 3600000
+  notifications:
+    synchronous: true

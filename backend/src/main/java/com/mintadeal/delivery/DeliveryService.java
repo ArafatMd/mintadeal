@@ -19,6 +19,8 @@ import com.mintadeal.catalogue.FulfilmentMode;
 import com.mintadeal.common.ApiException;
 import com.mintadeal.common.Geo;
 import com.mintadeal.delivery.DeliveryDtos.CostQuote;
+import com.mintadeal.finance.Bookkeeping;
+import com.mintadeal.finance.LedgerService;
 import com.mintadeal.identity.PhoneNumbers;
 import com.mintadeal.identity.Role;
 import com.mintadeal.identity.User;
@@ -54,12 +56,17 @@ public class DeliveryService {
     private final UserRepository users;
     private final OrderService orderService;
     private final DeliveryProperties props;
+    private final Bookkeeping bookkeeping;
+    private final LedgerService ledger;
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
     public DeliveryService(DeliveryJobRepository jobs, VendorChargeRepository charges, ShopOrderRepository orders,
                            CheckoutRepository checkouts, VendorRepository vendors, UserRepository users,
-                           OrderService orderService, DeliveryProperties props, Clock clock) {
+                           OrderService orderService, DeliveryProperties props, Bookkeeping bookkeeping,
+                           LedgerService ledger, Clock clock) {
+        this.bookkeeping = bookkeeping;
+        this.ledger = ledger;
         this.jobs = jobs;
         this.charges = charges;
         this.orders = orders;
@@ -80,7 +87,8 @@ public class DeliveryService {
         Vendor v = vendors.findById(vendorId).orElseThrow();
         BigDecimal km = distance(v, c);
         long cost = cost(km);
-        long outstanding = charges.outstandingFor(vendorId);
+        // What the shop owes after its earnings are netted off, so busy prepaid shops are not blocked.
+        long outstanding = ledger.duesOf(vendorId);
         String problem = null;
         if (o.getStatus() != OrderStatus.ACCEPTED || o.getFulfilmentMode() != FulfilmentMode.PARTNER_DELIVERY) {
             problem = "Accept the order first. Partner delivery is only for orders the customer chose it for.";
@@ -163,6 +171,7 @@ public class DeliveryService {
         // The rider has done the work from here on, so this is when the shop is charged.
         charges.save(new VendorCharge(job.getVendorId(), job.getShopOrderId(), job.getId(), job.getCostMinor(),
                 "Delivery partner for order " + job.getOrderCode() + " (" + job.getDistanceKm() + " km)", now));
+        bookkeeping.deliveryCharged(job.getId(), job.getVendorId(), job.getOrderCode(), job.getCostMinor());
         orderService.partnerPickedUp(job.getShopOrderId(), agentId, name(agentId));
         return job;
     }

@@ -59,6 +59,13 @@ public class VendorCharge {
         this.createdAt = now;
     }
 
+    /** The charge has been deducted from a payout. */
+    public void recover() {
+        if (OUTSTANDING.equals(status)) {
+            status = "RECOVERED";
+        }
+    }
+
     public UUID getId() {
         return id;
     }

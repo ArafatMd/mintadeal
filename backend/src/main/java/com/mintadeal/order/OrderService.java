@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.mintadeal.catalogue.FulfilmentMode;
 import com.mintadeal.catalogue.ListingRepository;
 import com.mintadeal.common.ApiException;
+import com.mintadeal.finance.Bookkeeping;
 import com.mintadeal.order.OrderDtos.Action;
 import com.mintadeal.order.OrderViews.Viewer;
 
@@ -31,11 +32,13 @@ public class OrderService {
     private final PaymentGateways gateways;
     private final OrderViews views;
     private final ApplicationEventPublisher publisher;
+    private final Bookkeeping bookkeeping;
     private final Clock clock;
 
     public OrderService(ShopOrderRepository orders, CheckoutRepository checkouts, OrderEventRepository events,
                         RefundRepository refunds, ListingRepository listings, PaymentGateways gateways,
-                        OrderViews views, ApplicationEventPublisher publisher, Clock clock) {
+                        OrderViews views, ApplicationEventPublisher publisher, Bookkeeping bookkeeping, Clock clock) {
+        this.bookkeeping = bookkeeping;
         this.orders = orders;
         this.checkouts = checkouts;
         this.events = events;
@@ -160,6 +163,10 @@ public class OrderService {
     void move(ShopOrder o, OrderStatus next, ActorType actor, UUID actorId, String note, Instant now) {
         o.moveTo(next, now);
         events.save(new OrderEvent(o.getId(), next, actor, actorId, note, now));
+        if (next == OrderStatus.COMPLETED) {
+            bookkeeping.orderCompleted(o, checkouts.findById(o.getCheckoutId()).orElseThrow());
+        }
+        publisher.publishEvent(new OrderStatusEvent(o.getId(), next, actor));
     }
 
     /** Cancels, puts reserved stock back, and refunds the order's share if it was paid online. */
@@ -167,6 +174,7 @@ public class OrderService {
         o.cancel(actor, reason, now);
         events.save(new OrderEvent(o.getId(), OrderStatus.CANCELLED, actor, actorId, reason, now));
         publisher.publishEvent(new OrderCancelledEvent(o.getId(), reason));
+        publisher.publishEvent(new OrderStatusEvent(o.getId(), OrderStatus.CANCELLED, actor));
         for (OrderLine line : o.getLines()) {
             listings.findById(line.getListingId()).ifPresent(l -> {
                 if (l.getStock() != null) {
@@ -185,15 +193,33 @@ public class OrderService {
             return;
         }
         Refund refund = refunds.save(new Refund(c.getId(), o.getId(), o.getTotalMinor(), now));
+        attemptRefund(refund, c, o, now);
+    }
+
+    private void attemptRefund(Refund refund, Checkout c, ShopOrder o, Instant now) {
         try {
             String id = gateways.named(c.getPaymentProvider())
-                    .refund(c.getProviderPaymentId(), o.getTotalMinor(), o.getCode());
+                    .refund(c.getProviderPaymentId(), refund.getAmountMinor(), o.getCode());
             refund.processed(id, now);
+            bookkeeping.refundProcessed(refund.getId(), o.getCode(), refund.getAmountMinor());
         } catch (RuntimeException e) {
             // The cancellation stands; the refund is retried by an admin. Never lose the record of money owed.
             log.warn("Refund for order {} failed: {}", o.getCode(), e.getMessage());
             refund.failed(e.getMessage(), now);
         }
+    }
+
+    /** An admin retries a refund that the payment provider rejected or could not be reached for. */
+    @Transactional
+    public Refund retryRefund(UUID refundId) {
+        Refund refund = refunds.findById(refundId).orElseThrow(() -> ApiException.notFound("Refund"));
+        if (refund.getStatus() != RefundStatus.FAILED) {
+            throw ApiException.conflict("refund_not_failed", "Only failed refunds can be retried");
+        }
+        ShopOrder o = orders.findById(refund.getShopOrderId()).orElseThrow();
+        Checkout c = checkouts.findById(refund.getCheckoutId()).orElseThrow();
+        attemptRefund(refund, c, o, clock.instant());
+        return refund;
     }
 
     private void closePaymentLink(Checkout c) {

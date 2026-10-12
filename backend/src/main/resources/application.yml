@@ -73,3 +73,13 @@ mintadeal:
   integrations:
     razorpay-base-url: https://api.razorpay.com
     two-factor-base-url: https://2factor.in
+    whatsapp-base-url: https://graph.facebook.com/v21.0
+  commission:
+    # Used until an admin sets rates. 500 basis points = 5%.
+    default-bps: 500
+  payouts:
+    # Shops with a smaller balance are left for the next batch.
+    minimum-minor: 10000
+  notifications:
+    # Send WhatsApp messages on a background thread so a slow provider never delays an order.
+    synchronous: false

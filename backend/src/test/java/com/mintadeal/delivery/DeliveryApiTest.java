@@ -128,11 +128,14 @@ class DeliveryApiTest extends ApiTest {
     @Test
     void shopOverItsUnpaidChargesLimitCannotBookMoreRiders() throws Exception {
         Setup s = acceptedPartnerOrder();
+        // The shop already owes ₹1990 (for example, commission on pay-on-delivery orders).
+        jdbc.update("insert into ledger_journal values ('00000000-0000-0000-0000-000000000001', 'TEST', ?::uuid, 'Earlier dues', now())",
+                s.orderId());
         jdbc.update("""
-                insert into vendor_charge (id, vendor_id, shop_order_id, charge_type, amount_minor, description, status,
-                                           created_at, version)
-                values (gen_random_uuid(), ?::uuid, ?::uuid, 'PARTNER_DELIVERY', 199000, 'Earlier deliveries',
-                        'OUTSTANDING', now(), 0)""", s.vendorId(), s.orderId());
+                insert into ledger_entry values (gen_random_uuid(), '00000000-0000-0000-0000-000000000001',
+                    'VENDOR_PAYABLE', ?::uuid, 199000, now()),
+                  (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', 'COMMISSION_REVENUE', null, -199000, now())""",
+                s.vendorId());
         call(GET("/api/vendor/orders/" + s.orderId() + "/delivery/quote"), s.shop(), null)
                 .andExpect(jsonPath("$.allowed").value(false))
                 .andExpect(jsonPath("$.problem").value(org.hamcrest.Matchers.containsString("₹1990")));

@@ -141,6 +141,7 @@ class DemoDataSeeder implements ApplicationRunner {
         v.setLatitude(lat);
         v.setLongitude(lng);
         v.setOpeningHours("9 am - 9 pm");
+        v.setPayoutUpiId(name.toLowerCase().replaceAll("[^a-z]", "") + "@okaxis");
         return vendors.save(v);
     }
 

@@ -32,15 +32,18 @@ public class AdminDeliveryController {
     private final VendorChargeRepository charges;
     private final JobViews views;
     private final DeliveryProperties props;
+    private final com.mintadeal.finance.LedgerService ledger;
     private final AuditService audit;
 
     public AdminDeliveryController(DeliveryService service, DeliveryJobRepository jobs, VendorChargeRepository charges,
-                                   JobViews views, DeliveryProperties props, AuditService audit) {
+                                   JobViews views, DeliveryProperties props, AuditService audit,
+            com.mintadeal.finance.LedgerService ledger) {
         this.service = service;
         this.jobs = jobs;
         this.charges = charges;
         this.views = views;
         this.props = props;
+        this.ledger = ledger;
         this.audit = audit;
     }
 
@@ -75,7 +78,7 @@ public class AdminDeliveryController {
     @GetMapping("/charges")
     @Transactional(readOnly = true)
     public ChargesView vendorCharges(@RequestParam UUID vendorId) {
-        return new ChargesView(charges.outstandingFor(vendorId), props.maxOutstandingMinor(),
+        return new ChargesView(ledger.duesOf(vendorId), props.maxOutstandingMinor(),
                 charges.findByVendorIdOrderByCreatedAtDesc(vendorId, PageRequest.of(0, 100)).map(ChargeDto::of).getContent());
     }
 }

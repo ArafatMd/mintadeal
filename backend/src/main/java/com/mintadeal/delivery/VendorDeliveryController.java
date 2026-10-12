@@ -22,13 +22,16 @@ public class VendorDeliveryController {
     private final VendorService vendors;
     private final VendorChargeRepository charges;
     private final DeliveryProperties props;
+    private final com.mintadeal.finance.LedgerService ledger;
 
     public VendorDeliveryController(DeliveryService service, VendorService vendors, VendorChargeRepository charges,
-                                    DeliveryProperties props) {
+                                    DeliveryProperties props,
+            com.mintadeal.finance.LedgerService ledger) {
         this.service = service;
         this.vendors = vendors;
         this.charges = charges;
         this.props = props;
+        this.ledger = ledger;
     }
 
     /** What a delivery partner would cost for this order, shown before the shop books one. */
@@ -42,7 +45,7 @@ public class VendorDeliveryController {
         UUID user = CurrentUser.id();
         UUID vendorId = vendors.approvedOwnedBy(user).getId();
         var job = service.request(vendorId, user, id);
-        return new CostQuote(job.getCostMinor(), job.getDistanceKm(), charges.outstandingFor(vendorId),
+        return new CostQuote(job.getCostMinor(), job.getDistanceKm(), ledger.duesOf(vendorId),
                 props.maxOutstandingMinor(), true, null);
     }
 
@@ -56,7 +59,7 @@ public class VendorDeliveryController {
     @Transactional(readOnly = true)
     public ChargesView charges() {
         UUID vendorId = vendors.ownedBy(CurrentUser.id()).getId();
-        return new ChargesView(charges.outstandingFor(vendorId), props.maxOutstandingMinor(),
+        return new ChargesView(ledger.duesOf(vendorId), props.maxOutstandingMinor(),
                 charges.findByVendorIdOrderByCreatedAtDesc(vendorId, PageRequest.of(0, 100)).map(ChargeDto::of).getContent());
     }
 }

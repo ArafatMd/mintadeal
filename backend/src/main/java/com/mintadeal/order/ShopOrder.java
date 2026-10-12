@@ -57,6 +57,12 @@ public class ShopOrder {
 
     private long totalMinor;
 
+    /** Commission rate fixed when the order was placed, in basis points. */
+    private int commissionBps;
+
+    /** Commission taken when the order completed. */
+    private Long commissionMinor;
+
     private Instant acceptDeadline;
 
     private Instant acceptedAt;
@@ -137,6 +143,22 @@ public class ShopOrder {
         moveTo(OrderStatus.CANCELLED, now);
         this.cancelledBy = by;
         this.cancelReason = reason;
+    }
+
+    public void setCommissionBps(int commissionBps) {
+        this.commissionBps = commissionBps;
+    }
+
+    public int getCommissionBps() {
+        return commissionBps;
+    }
+
+    public Long getCommissionMinor() {
+        return commissionMinor;
+    }
+
+    public void setCommissionMinor(long commissionMinor) {
+        this.commissionMinor = commissionMinor;
     }
 
     public boolean isDelivery() {

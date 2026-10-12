@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import com.mintadeal.catalogue.ListingStatus;
 import com.mintadeal.catalogue.ListingType;
 import com.mintadeal.common.ApiException;
 import com.mintadeal.common.Geo;
+import com.mintadeal.finance.CommissionService;
 import com.mintadeal.identity.User;
 import com.mintadeal.identity.UserRepository;
 import com.mintadeal.order.CheckoutDtos.Address;
@@ -74,11 +76,16 @@ public class CheckoutService {
     private final PaymentGateways gateways;
     private final OrderViews views;
     private final OrderProperties props;
+    private final CommissionService commission;
+    private final ApplicationEventPublisher publisher;
     private final Clock clock;
 
     public CheckoutService(ListingRepository listings, VendorRepository vendors, UserRepository users,
                            CheckoutRepository checkouts, ShopOrderRepository orders, OrderEventRepository events,
-                           PaymentGateways gateways, OrderViews views, OrderProperties props, Clock clock) {
+                           PaymentGateways gateways, OrderViews views, OrderProperties props,
+                           CommissionService commission, ApplicationEventPublisher publisher, Clock clock) {
+        this.commission = commission;
+        this.publisher = publisher;
         this.listings = listings;
         this.vendors = vendors;
         this.users = users;
@@ -150,12 +157,14 @@ public class CheckoutService {
                 }
             }
             order.setDeliveryFeeMinor(g.deliveryFee());
+            order.setCommissionBps(commission.rateFor(g.vendor()));
             if (!online) {
                 order.awaitAcceptance(now.plus(props.acceptTimeout()));
             }
             orders.save(order);
             events.save(new OrderEvent(order.getId(), initial, ActorType.CUSTOMER, customerId,
                     online ? "Waiting for online payment" : "Order placed, pay on " + payOnWhat(g.selected()), now));
+            publisher.publishEvent(new OrderStatusEvent(order.getId(), initial, ActorType.CUSTOMER));
         }
 
         if (online) {

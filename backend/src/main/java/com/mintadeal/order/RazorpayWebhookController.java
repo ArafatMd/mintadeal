@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.mintadeal.finance.PayoutService;
 import com.mintadeal.integrations.RazorpayClient;
 
 import tools.jackson.databind.JsonNode;
@@ -26,9 +27,11 @@ public class RazorpayWebhookController {
     private final PaymentService payments;
     private final CheckoutRepository checkouts;
     private final ObjectMapper json;
+    private final PayoutService payouts;
 
     public RazorpayWebhookController(RazorpayClient razorpay, PaymentService payments, CheckoutRepository checkouts,
-                                     ObjectMapper json) {
+                                     ObjectMapper json, PayoutService payouts) {
+        this.payouts = payouts;
         this.razorpay = razorpay;
         this.payments = payments;
         this.checkouts = checkouts;
@@ -44,6 +47,13 @@ public class RazorpayWebhookController {
         }
         JsonNode event = json.readTree(body);
         String type = event.path("event").asString("");
+        if (type.startsWith("payout.")) {
+            String payoutId = event.path("payload").path("payout").path("entity").path("id").asString(null);
+            if (payoutId != null) {
+                payouts.onProviderUpdate(payoutId);
+            }
+            return ResponseEntity.ok().build();
+        }
         String linkId = event.path("payload").path("payment_link").path("entity").path("id").asString(null);
         if (linkId == null) {
             return ResponseEntity.ok().build();

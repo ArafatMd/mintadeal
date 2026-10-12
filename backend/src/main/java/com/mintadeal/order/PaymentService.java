@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mintadeal.catalogue.FulfilmentMode;
 import com.mintadeal.common.ApiException;
+import com.mintadeal.finance.Bookkeeping;
 
 /**
  * Confirms online payments. A checkout is marked paid only on the provider's word: a signed webhook or a
@@ -27,11 +28,14 @@ public class PaymentService {
     private final OrderService orderService;
     private final PaymentGateways gateways;
     private final Redemptions redemptions;
+    private final Bookkeeping bookkeeping;
     private final OrderProperties props;
     private final Clock clock;
 
     public PaymentService(CheckoutRepository checkouts, ShopOrderRepository orders, OrderService orderService,
-                          PaymentGateways gateways, Redemptions redemptions, OrderProperties props, Clock clock) {
+                          PaymentGateways gateways, Redemptions redemptions, Bookkeeping bookkeeping,
+                          OrderProperties props, Clock clock) {
+        this.bookkeeping = bookkeeping;
         this.checkouts = checkouts;
         this.orders = orders;
         this.orderService = orderService;
@@ -71,6 +75,7 @@ public class PaymentService {
         Instant now = clock.instant();
         boolean wasPending = c.getPaymentStatus() == PaymentStatus.PENDING;
         c.markPaid(paymentId, now);
+        bookkeeping.paymentReceived(c);
         List<ShopOrder> list = orders.findByCheckoutIdOrderByCode(c.getId());
         if (!wasPending) {
             // Paid after the checkout was cancelled or expired: the orders are gone, so return the money.

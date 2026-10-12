@@ -1,0 +1,24 @@
+# Java / Maven
+backend/target/
+backend/storage/
+*.class
+
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+**/ios/Pods/
+**/ios/.symlinks/
+**/android/.gradle/
+**/android/local.properties
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+*.iml
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store

@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: ${TEST_DB_URL:jdbc:postgresql://localhost:5432/mintadeal_test}
+    username: ${DB_USERNAME:mintadeal}
+    password: ${DB_PASSWORD:mintadeal}
+  flyway:
+    clean-disabled: false
+
+mintadeal:
+  otp:
+    dev-fixed-code: "123456"
+    resend-cooldown: 0s
+    max-per-hour: 1000
+  bootstrap:
+    admin-phones: "9000000001"
+  files:
+    directory: ./target/test-files

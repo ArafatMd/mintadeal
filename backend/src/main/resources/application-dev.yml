@@ -1,0 +1,7 @@
+# Local development: fixed OTP 123456, demo admin, demo shops around HSR Layout.
+mintadeal:
+  otp:
+    dev-fixed-code: "123456"
+  bootstrap:
+    admin-phones: "9000000001"
+  seed-demo-data: true

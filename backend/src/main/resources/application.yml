@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: mintadeal
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mintadeal}
+    username: ${DB_USERNAME:mintadeal}
+    password: ${DB_PASSWORD:mintadeal}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+  jackson:
+    deserialization:
+      # Apps may omit on/off flags; a missing boolean means false.
+      fail-on-null-for-primitives: false
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+mintadeal:
+  jwt:
+    # Must be overridden in every deployed environment.
+    secret: ${JWT_SECRET:dev-only-secret-change-me-0123456789abcdef}
+    issuer: https://api.mintadeal.in
+    ttl: 30d
+  otp:
+    ttl: 5m
+    max-attempts: 5
+    resend-cooldown: 30s
+    max-per-hour: 5
+    pepper: ${OTP_PEPPER:dev-only-pepper-change-me}
+    dev-fixed-code: ${OTP_DEV_FIXED_CODE:}
+  bootstrap:
+    admin-phones: ${ADMIN_PHONES:}
+  discovery:
+    nearby-radius-km: 5
+    max-search-radius-km: 25
+  files:
+    directory: ${FILES_DIR:./storage/files}
+    public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:*,http://127.0.0.1:*}

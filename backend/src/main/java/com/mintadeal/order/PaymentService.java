@@ -26,14 +26,16 @@ public class PaymentService {
     private final ShopOrderRepository orders;
     private final OrderService orderService;
     private final PaymentGateways gateways;
+    private final Redemptions redemptions;
     private final OrderProperties props;
     private final Clock clock;
 
     public PaymentService(CheckoutRepository checkouts, ShopOrderRepository orders, OrderService orderService,
-                          PaymentGateways gateways, OrderProperties props, Clock clock) {
+                          PaymentGateways gateways, Redemptions redemptions, OrderProperties props, Clock clock) {
         this.checkouts = checkouts;
         this.orders = orders;
         this.orderService = orderService;
+        this.redemptions = redemptions;
         this.gateways = gateways;
         this.props = props;
         this.clock = clock;
@@ -82,7 +84,8 @@ public class PaymentService {
             }
             if (o.getFulfilmentMode() == FulfilmentMode.VENUE_QR) {
                 orderService.move(o, OrderStatus.ACCEPTED, ActorType.SYSTEM, null,
-                        "Paid online. Offer confirmed, show the order at the venue", now);
+                        "Paid online. Show the QR code at the venue", now);
+                redemptions.issue(o);
             } else {
                 o.awaitAcceptance(now.plus(props.acceptTimeout()));
                 orderService.move(o, OrderStatus.PLACED, ActorType.SYSTEM, null, "Paid online", now);

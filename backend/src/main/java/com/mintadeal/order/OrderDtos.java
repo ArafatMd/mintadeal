@@ -15,8 +15,27 @@ public final class OrderDtos {
     private OrderDtos() {
     }
 
+    /**
+     * REDEEM: the shop scans the customer's QR (venue offers). REQUEST_DELIVERY / CANCEL_DELIVERY: the shop books or
+     * cancels a Mintadeal delivery partner.
+     */
     public enum Action {
-        PAY, CANCEL, ACCEPT, REJECT, MARK_READY, OUT_FOR_DELIVERY, COMPLETE
+        PAY, CANCEL, ACCEPT, REJECT, MARK_READY, OUT_FOR_DELIVERY, COMPLETE, REDEEM, REQUEST_DELIVERY, CANCEL_DELIVERY
+    }
+
+    /**
+     * The delivery partner job behind a partner-delivery order.
+     *
+     * @param costMinor what the shop pays for the partner; shown to the shop and admins only
+     * @param dropCode the handover code; shown to the customer only
+     */
+    public record DeliveryInfo(String status, String agentName, String agentPhone, Long costMinor, String dropCode,
+                               Instant requestedAt, Instant assignedAt, Instant pickedUpAt, Instant deliveredAt,
+                               String failureReason) {
+    }
+
+    /** @param token the QR payload; shown to the customer only, never to the shop */
+    public record RedemptionInfo(String token, int quantity, Instant validFrom, Instant validTo, Instant usedAt) {
     }
 
     public record ReasonRequest(@NotBlank @Size(max = 500) String reason) {
@@ -69,7 +88,8 @@ public final class OrderDtos {
                               PaymentMethod paymentMethod, PaymentStatus paymentStatus, String paymentUrl,
                               Instant acceptDeadline, Instant acceptedAt, Instant readyAt, Instant completedAt,
                               Instant cancelledAt, ActorType cancelledBy, String cancelReason,
-                              RefundDto refund, List<EventDto> events, List<Action> actions, Instant createdAt) {
+                              RefundDto refund, DeliveryInfo delivery, RedemptionInfo redemption,
+                              List<EventDto> events, List<Action> actions, Instant createdAt) {
     }
 
     public record VendorSummaryCounts(long newOrders, long activeOrders) {

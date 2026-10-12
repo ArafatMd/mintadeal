@@ -68,7 +68,8 @@ class OnlinePaymentApiTest extends OrderTestBase {
                 .andExpect(jsonPath("$.fulfilmentMode").value("VENUE_QR"))
                 .andExpect(jsonPath("$.totalMinor").value(99800));
         call(GET("/api/vendor/orders/" + orderId), salon.token(), null)
-                .andExpect(jsonPath("$.actions[0]").value("COMPLETE"));
+                .andExpect(jsonPath("$.actions[0]").value("REDEEM"))
+                .andExpect(jsonPath("$.redemption.token").doesNotExist());
 
         String admin = login(ADMIN_PHONE);
         call(POST("/api/admin/orders/" + orderId + "/cancel"), admin, "{\"reason\":\"Salon closed for renovation\"}")

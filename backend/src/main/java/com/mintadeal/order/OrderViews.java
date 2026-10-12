@@ -1,15 +1,22 @@
 package com.mintadeal.order;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
 
 import com.mintadeal.catalogue.FulfilmentMode;
 import com.mintadeal.common.ApiException;
+import com.mintadeal.delivery.DeliveryJobRepository;
+import com.mintadeal.delivery.JobStatus;
+import com.mintadeal.identity.User;
+import com.mintadeal.identity.UserRepository;
 import com.mintadeal.order.CheckoutDtos.CheckoutDto;
 import com.mintadeal.order.OrderDtos.Action;
 import com.mintadeal.order.OrderDtos.AddressDto;
+import com.mintadeal.order.OrderDtos.DeliveryInfo;
+import com.mintadeal.order.OrderDtos.RedemptionInfo;
 import com.mintadeal.order.OrderDtos.EventDto;
 import com.mintadeal.order.OrderDtos.LineDto;
 import com.mintadeal.order.OrderDtos.OrderDetail;
@@ -32,14 +39,21 @@ public class OrderViews {
     private final OrderEventRepository events;
     private final RefundRepository refunds;
     private final VendorRepository vendors;
+    private final DeliveryJobRepository jobs;
+    private final RedemptionRepository redemptions;
+    private final UserRepository users;
 
     OrderViews(CheckoutRepository checkouts, ShopOrderRepository orders, OrderEventRepository events,
-               RefundRepository refunds, VendorRepository vendors) {
+               RefundRepository refunds, VendorRepository vendors, DeliveryJobRepository jobs,
+               RedemptionRepository redemptions, UserRepository users) {
         this.checkouts = checkouts;
         this.orders = orders;
         this.events = events;
         this.refunds = refunds;
         this.vendors = vendors;
+        this.jobs = jobs;
+        this.redemptions = redemptions;
+        this.users = users;
     }
 
     CheckoutDto checkout(Checkout c) {
@@ -83,11 +97,34 @@ public class OrderViews {
                 o.getAcceptDeadline(), o.getAcceptedAt(), o.getReadyAt(), o.getCompletedAt(), o.getCancelledAt(),
                 o.getCancelledBy(), o.getCancelReason(),
                 RefundDto.of(refunds.findByShopOrderId(o.getId()).orElse(null)),
+                delivery(o, viewer), redemption(o, viewer),
                 events.findByShopOrderIdOrderByCreatedAt(o.getId()).stream().map(EventDto::of).toList(),
                 actions(o, viewer), o.getCreatedAt());
     }
 
-    static List<Action> actions(ShopOrder o, Viewer viewer) {
+    private DeliveryInfo delivery(ShopOrder o, Viewer viewer) {
+        if (o.getFulfilmentMode() != FulfilmentMode.PARTNER_DELIVERY) {
+            return null;
+        }
+        return jobs.findFirstByShopOrderIdOrderByRequestedAtDesc(o.getId()).map(j -> {
+            User agent = j.getAgentId() == null ? null : users.findById(j.getAgentId()).orElse(null);
+            return new DeliveryInfo(j.getStatus().name(), agent == null ? null : agent.getName(),
+                    agent == null ? null : agent.getPhone(),
+                    viewer == Viewer.CUSTOMER ? null : j.getCostMinor(),
+                    viewer == Viewer.CUSTOMER && j.getStatus().isActive() ? j.getDropCode() : null,
+                    j.getRequestedAt(), j.getAssignedAt(), j.getPickedUpAt(), j.getDeliveredAt(), j.getFailureReason());
+        }).orElse(null);
+    }
+
+    private RedemptionInfo redemption(ShopOrder o, Viewer viewer) {
+        return redemptions.findByShopOrderId(o.getId())
+                .map(r -> new RedemptionInfo(viewer == Viewer.CUSTOMER && o.getStatus() == OrderStatus.ACCEPTED
+                        ? Redemptions.QR_PREFIX + r.getToken() : null,
+                        r.getQuantity(), r.getValidFrom(), r.getValidTo(), r.getUsedAt()))
+                .orElse(null);
+    }
+
+    List<Action> actions(ShopOrder o, Viewer viewer) {
         List<Action> actions = new ArrayList<>();
         FulfilmentMode mode = o.getFulfilmentMode();
         switch (viewer) {
@@ -105,9 +142,30 @@ public class OrderViews {
                         actions.add(Action.ACCEPT);
                         actions.add(Action.REJECT);
                     }
-                    case ACCEPTED -> actions.add(mode == FulfilmentMode.PICKUP ? Action.MARK_READY
-                            : mode == FulfilmentMode.VENUE_QR ? Action.COMPLETE : Action.OUT_FOR_DELIVERY);
-                    case READY, OUT_FOR_DELIVERY -> actions.add(Action.COMPLETE);
+                    case ACCEPTED -> {
+                        switch (mode) {
+                            case PICKUP -> actions.add(Action.MARK_READY);
+                            case SHOP_DELIVERY -> actions.add(Action.OUT_FOR_DELIVERY);
+                            // Venue offers are completed only by scanning the customer's QR.
+                            case VENUE_QR -> actions.add(Action.REDEEM);
+                            // The rider moves partner deliveries along; the shop books or cancels the rider.
+                            case PARTNER_DELIVERY -> {
+                                var job = jobs.findFirstByShopOrderIdAndStatusIn(o.getId(),
+                                        EnumSet.of(JobStatus.REQUESTED, JobStatus.ASSIGNED, JobStatus.PICKED_UP));
+                                if (job.isEmpty()) {
+                                    actions.add(Action.REQUEST_DELIVERY);
+                                } else if (job.get().getStatus() != JobStatus.PICKED_UP) {
+                                    actions.add(Action.CANCEL_DELIVERY);
+                                }
+                            }
+                        }
+                    }
+                    case READY -> actions.add(Action.COMPLETE);
+                    case OUT_FOR_DELIVERY -> {
+                        if (mode == FulfilmentMode.SHOP_DELIVERY) {
+                            actions.add(Action.COMPLETE);
+                        }
+                    }
                     default -> {
                     }
                 }

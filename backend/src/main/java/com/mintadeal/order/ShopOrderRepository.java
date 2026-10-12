@@ -10,9 +10,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import com.mintadeal.catalogue.FulfilmentMode;
+
 public interface ShopOrderRepository extends JpaRepository<ShopOrder, UUID> {
 
     List<ShopOrder> findByCheckoutIdOrderByCode(UUID checkoutId);
+
+    List<ShopOrder> findByVendorIdAndFulfilmentModeAndCodeStartingWith(UUID vendorId, FulfilmentMode mode, String code);
 
     Page<ShopOrder> findByCustomerIdOrderByCreatedAtDesc(UUID customerId, Pageable pageable);
 

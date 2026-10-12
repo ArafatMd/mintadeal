@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,18 +29,56 @@ public class OrderService {
     private final RefundRepository refunds;
     private final ListingRepository listings;
     private final PaymentGateways gateways;
+    private final OrderViews views;
+    private final ApplicationEventPublisher publisher;
     private final Clock clock;
 
     public OrderService(ShopOrderRepository orders, CheckoutRepository checkouts, OrderEventRepository events,
                         RefundRepository refunds, ListingRepository listings, PaymentGateways gateways,
-                        Clock clock) {
+                        OrderViews views, ApplicationEventPublisher publisher, Clock clock) {
         this.orders = orders;
         this.checkouts = checkouts;
         this.events = events;
         this.refunds = refunds;
         this.listings = listings;
         this.gateways = gateways;
+        this.views = views;
+        this.publisher = publisher;
         this.clock = clock;
+    }
+
+    // --- Delivery partner milestones (called by the delivery module) ---
+
+    @Transactional
+    public void partnerPickedUp(UUID orderId, UUID agentId, String agentName) {
+        ShopOrder o = orders.findById(orderId).orElseThrow(() -> ApiException.notFound("Order"));
+        move(o, OrderStatus.OUT_FOR_DELIVERY, ActorType.SYSTEM, agentId,
+                "Picked up by delivery partner" + (agentName == null ? "" : " " + agentName), clock.instant());
+    }
+
+    @Transactional
+    public void partnerDelivered(UUID orderId, UUID agentId) {
+        ShopOrder o = orders.findById(orderId).orElseThrow(() -> ApiException.notFound("Order"));
+        move(o, OrderStatus.COMPLETED, ActorType.SYSTEM, agentId, "Delivered by the delivery partner", clock.instant());
+    }
+
+    /** A failed partner delivery hands the order back to the shop, which can book another rider or call the customer. */
+    @Transactional
+    public void partnerFailed(UUID orderId, UUID agentId, String reason) {
+        ShopOrder o = orders.findById(orderId).orElseThrow(() -> ApiException.notFound("Order"));
+        if (o.getStatus() == OrderStatus.OUT_FOR_DELIVERY) {
+            move(o, OrderStatus.ACCEPTED, ActorType.SYSTEM, agentId, "Delivery failed: " + reason, clock.instant());
+        } else {
+            events.save(new OrderEvent(o.getId(), o.getStatus(), ActorType.SYSTEM, agentId,
+                    "Delivery partner could not take the job: " + reason, clock.instant()));
+        }
+    }
+
+    /** Records a note on the order's history without changing its status. */
+    @Transactional
+    public void note(UUID orderId, ActorType actor, UUID actorId, String note) {
+        ShopOrder o = orders.findById(orderId).orElseThrow(() -> ApiException.notFound("Order"));
+        events.save(new OrderEvent(o.getId(), o.getStatus(), actor, actorId, note, clock.instant()));
     }
 
     // --- Shop actions ---
@@ -127,6 +166,7 @@ public class OrderService {
     void cancel(ShopOrder o, ActorType actor, UUID actorId, String reason, Instant now) {
         o.cancel(actor, reason, now);
         events.save(new OrderEvent(o.getId(), OrderStatus.CANCELLED, actor, actorId, reason, now));
+        publisher.publishEvent(new OrderCancelledEvent(o.getId(), reason));
         for (OrderLine line : o.getLines()) {
             listings.findById(line.getListingId()).ifPresent(l -> {
                 if (l.getStock() != null) {
@@ -167,8 +207,8 @@ public class OrderService {
         }
     }
 
-    private static void require(ShopOrder o, Viewer viewer, Action action) {
-        if (!OrderViews.actions(o, viewer).contains(action)) {
+    private void require(ShopOrder o, Viewer viewer, Action action) {
+        if (!views.actions(o, viewer).contains(action)) {
             throw ApiException.conflict("invalid_transition",
                     "This order is " + o.getStatus().name().toLowerCase().replace('_', ' ') + " and cannot be "
                             + switch (action) {
@@ -179,6 +219,8 @@ public class OrderService {
                                 case COMPLETE -> "completed";
                                 case CANCEL -> "cancelled";
                                 case PAY -> "paid";
+                                case REDEEM -> "redeemed";
+                                case REQUEST_DELIVERY, CANCEL_DELIVERY -> "changed";
                             } + " now");
         }
     }

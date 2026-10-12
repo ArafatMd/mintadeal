@@ -46,7 +46,7 @@ public abstract class ApiTest {
     void cleanDatabase() {
         ProviderStub.INSTANCE.reset();
         jdbc.execute("""
-                TRUNCATE refund, order_event, order_line, shop_order, checkout, integration_setting,
+                TRUNCATE vendor_charge, delivery_job, redemption, refund, order_event, order_line, shop_order, checkout, integration_setting,
                          audit_event, vendor_follow, listing_fulfilment_mode, listing, vendor,
                          otp_challenge, user_role, app_user CASCADE""");
     }
@@ -109,5 +109,9 @@ public abstract class ApiTest {
 
     protected static MockHttpServletRequestBuilder PUT(String url) {
         return put(url);
+    }
+
+    protected static MockHttpServletRequestBuilder PATCH(String url) {
+        return org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(url);
     }
 }

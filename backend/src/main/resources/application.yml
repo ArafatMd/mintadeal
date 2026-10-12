@@ -53,6 +53,12 @@ mintadeal:
     max-quantity: 20
     dev-fake-gateway: false
     sweep-interval-ms: 60000
+  delivery:
+    # Partner delivery cost charged to the shop: base fee plus a rate per (started) km.
+    base-fee-minor: 3000
+    per-km-minor: 800
+    max-outstanding-minor: 200000
+    drop-code-max-attempts: 5
   discovery:
     nearby-radius-km: 5
     max-search-radius-km: 25

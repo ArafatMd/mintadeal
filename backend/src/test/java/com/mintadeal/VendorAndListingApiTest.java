@@ -109,6 +109,9 @@ class VendorAndListingApiTest extends ApiTest {
                 .andExpect(jsonPath("$.items[*].listing.id").value(hasItem(id)));
 
         String admin = login(ADMIN_PHONE);
+        call(GET("/api/admin/listings?status=ACTIVE"), admin, null)
+                .andExpect(jsonPath("$.items[0].vendorName").value("Shop A"))
+                .andExpect(jsonPath("$.items[0].listing.id").value(id));
         call(POST("/api/admin/listings/" + id + "/remove"), admin, "{\"reason\":\"Misleading price\"}")
                 .andExpect(jsonPath("$.status").value("REMOVED"));
 

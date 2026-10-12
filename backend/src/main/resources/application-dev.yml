@@ -2,6 +2,8 @@
 mintadeal:
   otp:
     dev-fixed-code: "123456"
+    resend-cooldown: 5s
+    max-per-hour: 100
   bootstrap:
     admin-phones: "9000000001"
   seed-demo-data: true

@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mintadeal
+          POSTGRES_PASSWORD: mintadeal
+          POSTGRES_DB: mintadeal_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mintadeal" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - name: Build and test
+        working-directory: backend
+        run: mvn -B verify
+
+  flutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.7"
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze and test
+        run: |
+          for dir in packages/mintadeal_core apps/customer_app apps/vendor_app apps/delivery_app apps/admin_web; do
+            echo "::group::$dir"
+            (cd "$dir" && flutter analyze && flutter test)
+            echo "::endgroup::"
+          done
+      - name: Build admin website
+        working-directory: apps/admin_web
+        run: flutter build web --release --no-web-resources-cdn

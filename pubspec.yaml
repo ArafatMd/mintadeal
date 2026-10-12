@@ -1,0 +1,12 @@
+name: mintadeal_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+workspace:
+  - packages/mintadeal_core
+  - apps/customer_app
+  - apps/vendor_app
+  - apps/delivery_app
+  - apps/admin_web

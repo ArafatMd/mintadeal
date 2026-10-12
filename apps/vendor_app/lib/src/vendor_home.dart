@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 
 import 'listings_tab.dart';
+import 'order_alerts.dart';
+import 'orders_tab.dart';
 import 'providers.dart';
 import 'shop_form_screen.dart';
 
@@ -82,23 +84,48 @@ class _ReviewStatusScreen extends ConsumerWidget {
   }
 }
 
-class _Dashboard extends StatefulWidget {
+class _Dashboard extends ConsumerStatefulWidget {
   const _Dashboard({required this.shop});
 
   final Vendor shop;
 
   @override
-  State<_Dashboard> createState() => _DashboardState();
+  ConsumerState<_Dashboard> createState() => _DashboardState();
 }
 
-class _DashboardState extends State<_Dashboard> {
+class _DashboardState extends ConsumerState<_Dashboard> {
   int _tab = 0;
 
   @override
+  void initState() {
+    super.initState();
+    newOrderTick.addListener(_alert);
+  }
+
+  @override
+  void dispose() {
+    newOrderTick.removeListener(_alert);
+    super.dispose();
+  }
+
+  void _alert() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: const Text('New order received'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 8),
+        action: SnackBarAction(label: 'View', onPressed: () => setState(() => _tab = 1)),
+      ));
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final newOrders = ref.watch(orderCountsProvider)?.newOrders ?? 0;
     final pages = [
       ListingsTab(shop: widget.shop),
-      const _OrdersPlaceholder(),
+      const OrdersTab(),
       _ShopTab(shop: widget.shop),
     ];
     return Scaffold(
@@ -106,29 +133,16 @@ class _DashboardState extends State<_Dashboard> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.sell_outlined), selectedIcon: Icon(Icons.sell), label: 'Listings'),
+        destinations: [
+          const NavigationDestination(icon: Icon(Icons.sell_outlined), selectedIcon: Icon(Icons.sell), label: 'Listings'),
           NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Orders'),
-          NavigationDestination(
+            icon: Badge(isLabelVisible: newOrders > 0, label: Text('$newOrders'), child: const Icon(Icons.receipt_long_outlined)),
+            selectedIcon: Badge(isLabelVisible: newOrders > 0, label: Text('$newOrders'), child: const Icon(Icons.receipt_long)),
+            label: 'Orders',
+          ),
+          const NavigationDestination(
               icon: Icon(Icons.storefront_outlined), selectedIcon: Icon(Icons.storefront), label: 'My shop'),
         ],
-      ),
-    );
-  }
-}
-
-class _OrdersPlaceholder extends StatelessWidget {
-  const _OrdersPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
-      body: const EmptyView(
-        icon: Icons.receipt_long_outlined,
-        title: 'Orders arrive here',
-        message: 'Customer ordering opens in the next update. You will get WhatsApp alerts and accept orders in one tap.',
       ),
     );
   }
@@ -152,6 +166,7 @@ class _ShopTab extends ConsumerWidget {
       appBar: AppBar(title: const Text('My shop'), actions: [_SignOutButton()]),
       body: ListView(
         children: [
+          const Padding(padding: EdgeInsets.all(16), child: Center(child: MintadealLogo(height: 56))),
           ListTile(
             leading: CatalogueImage(url: shop.json['logoUrl'] as String?, category: shop.category, size: 48),
             title: Text(shop.displayName),

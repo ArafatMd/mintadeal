@@ -46,7 +46,7 @@ public class AdminOrderController {
                                              @RequestParam(required = false) String q,
                                              @RequestParam(defaultValue = "0") int page,
                                              @RequestParam(defaultValue = "50") int size) {
-        String query = q == null || q.isBlank() ? null : q.trim();
+        String query = q == null ? "" : q.trim();
         return PageResponse.of(repo.search(status, query, PageRequest.of(page, Math.clamp(size, 1, 200))),
                 views::summary);
     }

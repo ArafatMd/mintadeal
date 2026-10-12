@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 
+import 'cart.dart';
+import 'cart_button.dart';
+import 'cart_screen.dart';
 import 'providers.dart';
 import 'storefront_screen.dart';
 
@@ -17,7 +20,7 @@ class ListingDetailScreen extends ConsumerWidget {
     final key = placeKey(listingId, at);
     final item = ref.watch(listingProvider(key));
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(actions: const [CartButton()]),
       body: AsyncView(
         value: item,
         onRetry: () => ref.invalidate(listingProvider(key)),
@@ -131,25 +134,59 @@ class _Way extends StatelessWidget {
   }
 }
 
-class _OrderBar extends StatelessWidget {
+class _OrderBar extends ConsumerWidget {
   const _OrderBar({required this.item});
 
   final DiscoveryItem item;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final available = item.deliverable || item.pickupAvailable || item.venueOffer;
+    final inCart = ref.watch(cartProvider).where((e) => e.listingId == item.listing.id).fold(0, (s, e) => s + e.quantity);
+    final cart = ref.read(cartProvider.notifier);
+    void openCart() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CartScreen()));
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: FilledButton.icon(
-          icon: Icon(item.venueOffer ? Icons.qr_code_2 : Icons.shopping_bag_outlined),
-          label: Text(available ? (item.venueOffer ? 'Buy offer' : 'Add to cart') : 'Not available here'),
-          // Checkout arrives in Stage 3 (orders); until then explain rather than fail silently.
-          onPressed: available
-              ? () => showMessage(context, 'Ordering opens in the next update. Follow the shop to hear first.')
-              : null,
-        ),
+        child: !available
+            ? const FilledButton(onPressed: null, child: Text('Not available in your area'))
+            : inCart == 0
+                ? FilledButton.icon(
+                    icon: Icon(item.venueOffer ? Icons.qr_code_2 : Icons.shopping_bag_outlined),
+                    label: Text(item.venueOffer ? 'Buy offer' : 'Add to cart'),
+                    onPressed: () {
+                      cart.add(item);
+                      if (item.venueOffer) {
+                        openCart();
+                      } else {
+                        ScaffoldMessenger.of(context)
+                          ..hideCurrentSnackBar()
+                          ..showSnackBar(SnackBar(
+                            content: const Text('Added to cart'),
+                            behavior: SnackBarBehavior.floating,
+                            action: SnackBarAction(label: 'View cart', onPressed: openCart),
+                          ));
+                      }
+                    },
+                  )
+                : Row(children: [
+                    IconButton.outlined(
+                      tooltip: inCart == 1 ? 'Remove' : 'Less',
+                      onPressed: () => cart.setQuantity(item.listing.id, inCart - 1),
+                      icon: Icon(inCart == 1 ? Icons.delete_outline : Icons.remove),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text('$inCart', style: Theme.of(context).textTheme.titleMedium),
+                    ),
+                    IconButton.outlined(
+                      tooltip: 'More',
+                      onPressed: () => cart.setQuantity(item.listing.id, inCart + 1),
+                      icon: const Icon(Icons.add),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: FilledButton(onPressed: openCart, child: const Text('Go to cart'))),
+                  ]),
       ),
     );
   }

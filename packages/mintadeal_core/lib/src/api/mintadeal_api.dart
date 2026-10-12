@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import '../models/enums.dart';
 import '../models/models.dart';
+import '../models/orders.dart';
 import 'api_client.dart';
 
 /// A customer's location, used for Nearby and distances.
@@ -158,4 +159,100 @@ class MintadealApi {
 
   Future<AppUser> setRole(String phone, Role role, {required bool granted}) async => AppUser.fromJson(
       await client.post('/api/admin/users/roles', {'phone': phone, 'role': role.name, 'granted': granted}) as Json);
+
+  // --- Customer orders ---
+
+  Json _cartBody(List<(String, int)> items, Map<String, FulfilmentMode> modes, PaymentMethod? payment,
+          DeliveryAddress? address) =>
+      {
+        'items': [for (final (id, q) in items) {'listingId': id, 'quantity': q}],
+        'modes': {for (final e in modes.entries) e.key: e.value.name},
+        'paymentMethod': payment?.name,
+        'address': address?.toJson(),
+      };
+
+  Future<Quote> quote(List<(String, int)> items,
+          {Map<String, FulfilmentMode> modes = const {}, PaymentMethod? payment, DeliveryAddress? address}) async =>
+      Quote.fromJson(await client.post('/api/customer/checkout/quote', _cartBody(items, modes, payment, address)) as Json);
+
+  Future<CheckoutResult> placeOrder(String clientRequestId, List<(String, int)> items,
+          {required Map<String, FulfilmentMode> modes,
+          required PaymentMethod payment,
+          DeliveryAddress? address,
+          String? contactName,
+          String? note}) async =>
+      CheckoutResult.fromJson(await client.post('/api/customer/checkout', {
+        ..._cartBody(items, modes, payment, address),
+        'clientRequestId': clientRequestId,
+        'contactName': contactName,
+        'note': note,
+      }) as Json);
+
+  Future<CheckoutResult> checkout(String id) async =>
+      CheckoutResult.fromJson(await client.get('/api/customer/checkouts/$id') as Json);
+
+  Future<CheckoutResult> refreshPayment(String checkoutId) async =>
+      CheckoutResult.fromJson(await client.post('/api/customer/checkouts/$checkoutId/refresh-payment') as Json);
+
+  Future<PageResult<OrderSummary>> myOrders({int page = 0}) async =>
+      PageResult.fromJson(await client.get('/api/customer/orders', query: {'page': page}) as Json, OrderSummary.fromJson);
+
+  Future<OrderDetail> myOrder(String id) async =>
+      OrderDetail.fromJson(await client.get('/api/customer/orders/$id') as Json);
+
+  Future<OrderDetail> cancelMyOrder(String id) async =>
+      OrderDetail.fromJson(await client.post('/api/customer/orders/$id/cancel') as Json);
+
+  // --- Vendor orders ---
+
+  /// [filter] is one of NEW, ACTIVE, DONE, ALL.
+  Future<PageResult<OrderSummary>> shopOrders(String filter, {int page = 0}) async => PageResult.fromJson(
+      await client.get('/api/vendor/orders', query: {'filter': filter, 'page': page}) as Json, OrderSummary.fromJson);
+
+  Future<VendorOrderCounts> shopOrderCounts() async =>
+      VendorOrderCounts.fromJson(await client.get('/api/vendor/orders/summary') as Json);
+
+  Future<OrderDetail> shopOrder(String id) async =>
+      OrderDetail.fromJson(await client.get('/api/vendor/orders/$id') as Json);
+
+  Future<OrderDetail> shopOrderAction(String id, OrderAction action, {String? reason}) async {
+    final path = switch (action) {
+      OrderAction.ACCEPT => 'accept',
+      OrderAction.REJECT => 'reject',
+      OrderAction.MARK_READY => 'ready',
+      OrderAction.OUT_FOR_DELIVERY => 'out-for-delivery',
+      OrderAction.COMPLETE => 'complete',
+      _ => throw ArgumentError('Not a shop action: $action'),
+    };
+    return OrderDetail.fromJson(
+        await client.post('/api/vendor/orders/$id/$path', action == OrderAction.REJECT ? {'reason': reason} : null)
+            as Json);
+  }
+
+  // --- Admin orders and settings ---
+
+  Future<PageResult<OrderSummary>> adminOrders({OrderStatus? status, String? q, int page = 0}) async =>
+      PageResult.fromJson(
+          await client.get('/api/admin/orders', query: {'status': status?.name, 'q': q, 'page': page}) as Json,
+          OrderSummary.fromJson);
+
+  Future<OrderDetail> adminOrder(String id) async =>
+      OrderDetail.fromJson(await client.get('/api/admin/orders/$id') as Json);
+
+  Future<OrderDetail> adminCancelOrder(String id, String reason) async =>
+      OrderDetail.fromJson(await client.post('/api/admin/orders/$id/cancel', {'reason': reason}) as Json);
+
+  Future<List<IntegrationSettingView>> integrationSettings() async =>
+      [for (final s in await client.get('/api/admin/settings') as List) IntegrationSettingView.fromJson(s as Json)];
+
+  /// Blank secret values keep what is stored.
+  Future<IntegrationSettingView> saveIntegration(IntegrationProvider provider,
+          {required bool enabled, required Map<String, String> config, required Map<String, String> secrets}) async =>
+      IntegrationSettingView.fromJson(await client.put('/api/admin/settings/${provider.name}',
+          {'enabled': enabled, 'config': config, 'secrets': secrets}) as Json);
+
+  Future<(bool, String)> testIntegration(IntegrationProvider provider, {String? phone}) async {
+    final j = await client.post('/api/admin/settings/${provider.name}/test', {'phone': phone}) as Json;
+    return (j['ok'] as bool, j['message'] as String);
+  }
 }

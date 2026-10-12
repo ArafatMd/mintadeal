@@ -16,6 +16,7 @@ class AccountScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Account')),
       body: ListView(
         children: [
+          const Padding(padding: EdgeInsets.all(16), child: Center(child: MintadealLogo(height: 64))),
           if (session == null)
             ListTile(
               leading: const Icon(Icons.login),
@@ -38,12 +39,6 @@ class AccountScreen extends ConsumerWidget {
             title: const Text('Your area'),
             subtitle: Text(area.name),
             onTap: () => pickArea(context, ref),
-          ),
-          const ListTile(
-            leading: Icon(Icons.receipt_long_outlined),
-            title: Text('My orders'),
-            subtitle: Text('Coming with ordering in the next update'),
-            enabled: false,
           ),
           if (session != null) ...[
             const Divider(),

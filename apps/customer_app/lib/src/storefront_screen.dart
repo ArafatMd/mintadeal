@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'cart_button.dart';
 import 'listing_card.dart';
 import 'providers.dart';
 import 'sign_in.dart';
@@ -18,7 +19,7 @@ class StorefrontScreen extends ConsumerWidget {
     final key = placeKey(vendorId, at);
     final store = ref.watch(storefrontProvider(key));
     return Scaffold(
-      appBar: AppBar(title: Text(store.value?.vendor.displayName ?? '')),
+      appBar: AppBar(title: Text(store.value?.vendor.displayName ?? ''), actions: const [CartButton()]),
       body: AsyncView(
         value: store,
         onRetry: () => ref.invalidate(storefrontProvider(key)),

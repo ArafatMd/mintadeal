@@ -55,7 +55,8 @@ public class OrderViews {
     }
 
     OrderSummary summary(ShopOrder o, Checkout c) {
-        int count = o.getLines().stream().mapToInt(OrderLine::getQuantity).sum();
+        // Number of different items, so "Atta and 1 more" never counts two packs of atta as two items.
+        int count = o.getLines().size();
         return new OrderSummary(o.getId(), o.getCode(), c.getCode(), o.getVendorId(), o.getVendorName(),
                 o.getStatus(), o.getFulfilmentMode(), count,
                 o.getLines().isEmpty() ? null : o.getLines().getFirst().getTitle(), o.getTotalMinor(),

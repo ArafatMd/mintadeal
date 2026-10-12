@@ -102,5 +102,90 @@ enum FulfilmentMode {
   final String label;
   final IconData icon;
 
+  bool get isDelivery => this == SHOP_DELIVERY || this == PARTNER_DELIVERY;
+
   static FulfilmentMode parse(Object? s) => _byName(values, s, PICKUP);
+}
+
+enum PaymentMethod {
+  ONLINE('Pay online (UPI, card)'),
+  PAY_ON_DELIVERY('Pay on delivery or pickup');
+
+  const PaymentMethod(this.label);
+
+  final String label;
+
+  static PaymentMethod parse(Object? s) => _byName(values, s, PAY_ON_DELIVERY);
+}
+
+enum PaymentStatus {
+  NOT_REQUIRED('Pay on delivery'),
+  PENDING('Waiting for payment'),
+  PAID('Paid'),
+  EXPIRED('Payment expired'),
+  CANCELLED('Cancelled');
+
+  const PaymentStatus(this.label);
+
+  final String label;
+
+  static PaymentStatus parse(Object? s) => _byName(values, s, NOT_REQUIRED);
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT('Waiting for payment'),
+  PLACED('Waiting for the shop'),
+  ACCEPTED('Accepted'),
+  READY('Ready for pickup'),
+  OUT_FOR_DELIVERY('Out for delivery'),
+  COMPLETED('Completed'),
+  CANCELLED('Cancelled');
+
+  const OrderStatus(this.label);
+
+  final String label;
+
+  bool get isOpen => this != COMPLETED && this != CANCELLED;
+
+  static OrderStatus parse(Object? s) => _byName(values, s, PLACED);
+}
+
+enum OrderAction {
+  PAY('Pay now'),
+  CANCEL('Cancel order'),
+  ACCEPT('Accept'),
+  REJECT('Reject'),
+  MARK_READY('Mark ready for pickup'),
+  OUT_FOR_DELIVERY('Out for delivery'),
+  COMPLETE('Complete');
+
+  const OrderAction(this.label);
+
+  final String label;
+
+  static OrderAction parse(Object? s) => _byName(values, s, CANCEL);
+}
+
+enum RefundStatus {
+  PENDING('Refund pending'),
+  PROCESSED('Refunded'),
+  FAILED('Refund failed, Mintadeal will retry');
+
+  const RefundStatus(this.label);
+
+  final String label;
+
+  static RefundStatus parse(Object? s) => _byName(values, s, PENDING);
+}
+
+enum IntegrationProvider {
+  RAZORPAY('Razorpay', 'Online payments'),
+  TWO_FACTOR('2Factor', 'SMS sign-in codes');
+
+  const IntegrationProvider(this.label, this.purpose);
+
+  final String label;
+  final String purpose;
+
+  static IntegrationProvider parse(Object? s) => _byName(values, s, RAZORPAY);
 }

@@ -34,11 +34,12 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, UUID> {
 
     List<ShopOrder> findByStatusAndAcceptDeadlineBefore(OrderStatus status, Instant deadline);
 
+    /** @param q search text, or an empty string for no search (a null would reach PostgreSQL untyped) */
     @Query("""
             select o from ShopOrder o, Checkout c
             where o.checkoutId = c.id
               and (:status is null or o.status = :status)
-              and (:q is null or lower(o.code) like lower(concat('%', :q, '%'))
+              and (:q = '' or lower(o.code) like lower(concat('%', :q, '%'))
                    or c.contactPhone like concat('%', :q, '%')
                    or lower(o.vendorName) like lower(concat('%', :q, '%')))
             order by o.createdAt desc

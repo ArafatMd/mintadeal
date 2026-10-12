@@ -51,7 +51,7 @@ public final class OrderDtos {
         }
     }
 
-    /** Compact row for order lists. */
+    /** Compact row for order lists. {@code itemCount} is the number of different items. */
     public record OrderSummary(UUID id, String code, String checkoutCode, UUID vendorId, String vendorName,
                                OrderStatus status, FulfilmentMode fulfilmentMode, int itemCount,
                                String firstItemTitle, long totalMinor, PaymentMethod paymentMethod,

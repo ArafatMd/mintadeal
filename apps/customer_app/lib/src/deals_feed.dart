@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 
 import 'area.dart';
+import 'cart_button.dart';
 import 'listing_card.dart';
 
 enum FeedScope { nearby, bangalore }
@@ -63,6 +64,7 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
           ),
         ),
         toolbarHeight: 72,
+        actions: const [CartButton(), SizedBox(width: 8)],
       ),
       body: Column(
         children: [

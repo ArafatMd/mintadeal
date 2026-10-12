@@ -8,6 +8,7 @@ export 'src/config.dart';
 export 'src/models/areas.dart';
 export 'src/models/enums.dart';
 export 'src/models/models.dart';
+export 'src/models/orders.dart';
 export 'src/ui/async_view.dart';
 export 'src/ui/paged_list.dart';
 export 'src/ui/phone_login_screen.dart';

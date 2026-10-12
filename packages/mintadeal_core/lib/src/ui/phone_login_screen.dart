@@ -88,15 +88,8 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text.rich(
-                    TextSpan(children: [
-                      TextSpan(text: 'Mint', style: TextStyle(color: MintadealColors.orange)),
-                      TextSpan(text: 'a', style: TextStyle(color: MintadealColors.teal)),
-                      TextSpan(text: 'Deal', style: TextStyle(color: MintadealColors.orange)),
-                    ]),
-                    style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800),
-                    textAlign: TextAlign.center,
-                  ),
+                  const Center(child: MintadealLogo(height: 88)),
+                  const SizedBox(height: 12),
                   const SizedBox(height: 4),
                   Text(widget.appTitle, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
                   const SizedBox(height: 4),

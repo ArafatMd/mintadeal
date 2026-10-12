@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 
 import 'listings_page.dart';
+import 'orders_page.dart';
+import 'settings_page.dart';
 import 'users_page.dart';
 import 'vendors_page.dart';
 
@@ -16,7 +18,7 @@ class AdminShell extends ConsumerStatefulWidget {
 class _AdminShellState extends ConsumerState<AdminShell> {
   int _index = 0;
 
-  static const _pages = [VendorsPage(), ListingsPage(), UsersPage()];
+  static const _pages = [VendorsPage(), OrdersPage(), ListingsPage(), SettingsPage(), UsersPage()];
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +26,9 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     final wide = MediaQuery.of(context).size.width >= 900;
     final destinations = const [
       (Icons.storefront_outlined, Icons.storefront, 'Vendors'),
+      (Icons.receipt_long_outlined, Icons.receipt_long, 'Orders'),
       (Icons.sell_outlined, Icons.sell, 'Listings'),
+      (Icons.settings_outlined, Icons.settings, 'Integrations'),
       (Icons.badge_outlined, Icons.badge, 'Staff & roles'),
     ];
     final signOut = IconButton(
@@ -34,10 +38,11 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: Text.rich(TextSpan(children: [
-          const TextSpan(text: 'Mintadeal ', style: TextStyle(fontWeight: FontWeight.w800)),
-          TextSpan(text: 'Admin', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
-        ])),
+        title: Row(children: [
+          const MintadealLogo(height: 36),
+          const SizedBox(width: 12),
+          Text('Admin', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700)),
+        ]),
         actions: [signOut, const SizedBox(width: 8)],
       ),
       body: Row(children: [

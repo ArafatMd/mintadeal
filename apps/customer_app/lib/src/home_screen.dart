@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'account_screen.dart';
 import 'deals_feed.dart';
 import 'following_screen.dart';
+import 'orders_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
           DealsFeed(scope: FeedScope.nearby),
           DealsFeed(scope: FeedScope.bangalore),
           FollowingScreen(),
+          OrdersScreen(),
           AccountScreen(),
         ],
       ),
@@ -35,6 +37,8 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.location_city_outlined), selectedIcon: Icon(Icons.location_city), label: 'Bangalore'),
           NavigationDestination(
               icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite), label: 'Following'),
+          NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Orders'),
           NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Account'),
         ],
       ),

@@ -1,20 +1,32 @@
 import 'package:flutter/material.dart';
 
-/// Mintadeal brand colours: deep teal with the logo's orange as accent.
+/// Colours taken from the Mintadeal logo: orange wordmark, red cart, charcoal frame.
 class MintadealColors {
   const MintadealColors._();
 
-  static const teal = Color(0xFF1B7A5E);
-  static const deepTeal = Color(0xFF123C38);
-  static const orange = Color(0xFFE07020);
-  static const mint = Color(0xFFE6F3EE);
+  /// The logo's orange, for the wordmark, highlights and large text.
+  static const orange = Color(0xFFE46C0A);
+
+  /// A deeper shade of the logo orange for buttons: white text on it stays readable (4.9:1).
+  static const deepOrange = Color(0xFFB9530A);
+
+  /// The cart's red, for deal badges and discounts.
+  static const red = Color(0xFFD51C29);
+
+  static const charcoal = Color(0xFF3B3B3B);
+
+  static const cream = Color(0xFFFFF4EB);
 }
 
 ThemeData mintadealTheme({Brightness brightness = Brightness.light}) {
+  final dark = brightness == Brightness.dark;
   final scheme = ColorScheme.fromSeed(
-    seedColor: MintadealColors.teal,
+    seedColor: MintadealColors.orange,
     brightness: brightness,
-    secondary: MintadealColors.orange,
+    primary: dark ? const Color(0xFFFFB68A) : MintadealColors.deepOrange,
+    onPrimary: dark ? const Color(0xFF4A1E00) : Colors.white,
+    secondary: dark ? const Color(0xFFFFB3AE) : MintadealColors.red,
+    onSecondary: dark ? const Color(0xFF5F0A10) : Colors.white,
   );
   return ThemeData(
     colorScheme: scheme,
@@ -38,5 +50,25 @@ ThemeData mintadealTheme({Brightness brightness = Brightness.light}) {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
     ),
+    badgeTheme: BadgeThemeData(backgroundColor: scheme.secondary, textColor: scheme.onSecondary),
   );
+}
+
+/// The Mintadeal logo. On dark backgrounds it sits on a light tile so the charcoal cart stays visible.
+class MintadealLogo extends StatelessWidget {
+  const MintadealLogo({super.key, this.height = 48});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = Image.asset('assets/logo.png', package: 'mintadeal_core', height: height,
+        semanticLabel: 'Mintadeal');
+    if (Theme.of(context).brightness == Brightness.light) return image;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: height * 0.2, vertical: height * 0.1),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(height * 0.2)),
+      child: image,
+    );
+  }
 }

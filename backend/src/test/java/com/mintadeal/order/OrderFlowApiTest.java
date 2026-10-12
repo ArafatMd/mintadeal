@@ -193,6 +193,9 @@ class OrderFlowApiTest extends OrderTestBase {
                 cart("r1", "PAY_ON_DELIVERY", null, null, atta, "1")), "$.orders[0].code");
         String admin = login(ADMIN_PHONE);
 
+        call(GET("/api/admin/orders"), admin, null).andExpect(jsonPath("$.total").value(1));
+        call(GET("/api/admin/orders?status=PLACED"), admin, null).andExpect(jsonPath("$.total").value(1));
+        call(GET("/api/admin/orders?status=COMPLETED"), admin, null).andExpect(jsonPath("$.total").value(0));
         call(GET("/api/admin/orders?q=9845012345"), admin, null).andExpect(jsonPath("$.items[0].code").value(code));
         call(GET("/api/admin/orders?q=" + code.toLowerCase()), admin, null).andExpect(jsonPath("$.total").value(1));
         String id = read(call(GET("/api/admin/orders?q=" + code), admin, null), "$.items[0].id");

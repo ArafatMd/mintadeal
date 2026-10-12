@@ -7,3 +7,6 @@ mintadeal:
   bootstrap:
     admin-phones: "9000000001"
   seed-demo-data: true
+  orders:
+    # Simulates online payment until Razorpay is configured in the admin website.
+    dev-fake-gateway: true

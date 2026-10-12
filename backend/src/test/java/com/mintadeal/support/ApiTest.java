@@ -13,6 +13,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -33,10 +35,19 @@ public abstract class ApiTest {
     @Autowired
     private JdbcTemplate jdbc;
 
+    /** All tests talk to the stub instead of the real Razorpay and 2Factor. */
+    @DynamicPropertySource
+    static void providerUrls(DynamicPropertyRegistry registry) {
+        registry.add("mintadeal.integrations.razorpay-base-url", ProviderStub.INSTANCE::baseUrl);
+        registry.add("mintadeal.integrations.two-factor-base-url", ProviderStub.INSTANCE::baseUrl);
+    }
+
     @BeforeEach
     void cleanDatabase() {
+        ProviderStub.INSTANCE.reset();
         jdbc.execute("""
-                TRUNCATE audit_event, vendor_follow, listing_fulfilment_mode, listing, vendor,
+                TRUNCATE refund, order_event, order_line, shop_order, checkout, integration_setting,
+                         audit_event, vendor_follow, listing_fulfilment_mode, listing, vendor,
                          otp_challenge, user_role, app_user CASCADE""");
     }
 

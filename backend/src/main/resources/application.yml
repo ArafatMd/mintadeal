@@ -47,6 +47,12 @@ mintadeal:
     dev-fixed-code: ${OTP_DEV_FIXED_CODE:}
   bootstrap:
     admin-phones: ${ADMIN_PHONES:}
+  orders:
+    accept-timeout: 15m
+    payment-timeout: 30m
+    max-quantity: 20
+    dev-fake-gateway: false
+    sweep-interval-ms: 60000
   discovery:
     nearby-radius-km: 5
     max-search-radius-km: 25
@@ -55,3 +61,9 @@ mintadeal:
     public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:*,http://127.0.0.1:*}
+  settings:
+    # Encrypts Razorpay/2Factor secrets in the database. Set a long random value in every deployment and never change it.
+    encryption-key: ${SETTINGS_ENCRYPTION_KEY:dev-only-settings-key-change-me-0123456789}
+  integrations:
+    razorpay-base-url: https://api.razorpay.com
+    two-factor-base-url: https://2factor.in

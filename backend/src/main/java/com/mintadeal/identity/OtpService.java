@@ -49,11 +49,11 @@ public class OtpService {
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "otp_limit",
                     "Too many codes requested. Try again later");
         }
-        String code = StringUtils.hasText(props.devFixedCode())
-                ? props.devFixedCode()
-                : String.format("%06d", random.nextInt(1_000_000));
+        // The fixed development code is only used while no SMS provider is switched on.
+        boolean fixed = StringUtils.hasText(props.devFixedCode()) && !sms.delivers();
+        String code = fixed ? props.devFixedCode() : String.format("%06d", random.nextInt(1_000_000));
         challenges.save(new OtpChallenge(phone, hash(phone, code), now, now.plus(props.ttl())));
-        if (!StringUtils.hasText(props.devFixedCode())) {
+        if (!fixed) {
             sms.sendOtp(phone, code);
         }
     }

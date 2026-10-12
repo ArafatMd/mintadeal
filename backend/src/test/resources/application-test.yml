@@ -15,3 +15,6 @@ mintadeal:
     admin-phones: "9000000001"
   files:
     directory: ./target/test-files
+  orders:
+    dev-fake-gateway: true
+    sweep-interval-ms: 3600000

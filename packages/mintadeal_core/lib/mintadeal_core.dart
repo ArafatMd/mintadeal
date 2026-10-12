@@ -7,6 +7,7 @@ export 'src/auth/session.dart';
 export 'src/config.dart';
 export 'src/models/areas.dart';
 export 'src/models/enums.dart';
+export 'src/models/finance.dart';
 export 'src/models/models.dart';
 export 'src/models/orders.dart';
 export 'src/ui/async_view.dart';

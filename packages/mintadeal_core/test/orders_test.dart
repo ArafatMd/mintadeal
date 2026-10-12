@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 
 void main() {
+  financeLabels();
   test('parses a quote with groups, modes and problems', () {
     final q = Quote.fromJson({
       'groups': [
@@ -50,5 +51,13 @@ void main() {
     expect(timeAgo(now.subtract(const Duration(seconds: 20)), now: now), 'just now');
     expect(timeAgo(now.subtract(const Duration(minutes: 12)), now: now), '12 min ago');
     expect(timeAgo(now.subtract(const Duration(hours: 3)), now: now), '3 h ago');
+  });
+}
+
+void financeLabels() {
+  test('basis points read as percentages', () {
+    expect(bpsLabel(500), '5%');
+    expect(bpsLabel(250), '2.5%');
+    expect(bpsLabel(1275), '12.75%');
   });
 }

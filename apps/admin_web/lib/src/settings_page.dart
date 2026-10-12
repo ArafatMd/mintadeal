@@ -50,6 +50,17 @@ const _fields = {
     _Field('webhookSecret', 'Webhook secret', secret: true,
         help: 'Choose any long random value and enter the same one when you add the webhook in Razorpay'),
   ],
+  IntegrationProvider.RAZORPAYX: [
+    _Field('accountNumber', 'RazorpayX account number',
+        help: 'RazorpayX → Account details. Payouts use the Razorpay API keys above.'),
+  ],
+  IntegrationProvider.WHATSAPP: [
+    _Field('phoneNumberId', 'Phone number ID', help: 'Meta WhatsApp Manager → API setup'),
+    _Field('accessToken', 'Access token', secret: true, help: 'A permanent system user token'),
+    _Field('languageCode', 'Template language', hint: 'en'),
+    _Field('newOrderTemplate', 'New order template (to shops)', help: 'Body: {{1}} order, {{2}} items, {{3}} total, {{4}} fulfilment'),
+    _Field('orderUpdateTemplate', 'Order update template (to customers)', help: 'Body: {{1}} order, {{2}} shop, {{3}} what happened'),
+  ],
   IntegrationProvider.TWO_FACTOR: [
     _Field('apiKey', 'API key', secret: true, help: '2factor.in → API keys'),
     _Field('templateName', 'OTP template name', hint: 'Leave empty to use your account default',
@@ -143,7 +154,12 @@ class _IntegrationCardState extends ConsumerState<_IntegrationCard> {
         padding: const EdgeInsets.all(20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Icon(_s.provider == IntegrationProvider.RAZORPAY ? Icons.payments_outlined : Icons.sms_outlined),
+            Icon(switch (_s.provider) {
+              IntegrationProvider.RAZORPAY => Icons.payments_outlined,
+              IntegrationProvider.TWO_FACTOR => Icons.sms_outlined,
+              IntegrationProvider.RAZORPAYX => Icons.account_balance_outlined,
+              IntegrationProvider.WHATSAPP => Icons.chat_outlined,
+            }),
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -185,6 +201,18 @@ class _IntegrationCardState extends ConsumerState<_IntegrationCard> {
             ),
             const SizedBox(height: 12),
           ],
+          for (final key in const ['usage'])
+            if (_s.info[key] != null && _s.info[key]!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(_s.info[key]!, style: theme.textTheme.bodySmall),
+              ),
+          if (_s.provider == IntegrationProvider.RAZORPAYX && _s.info['webhookEvents'] != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text('Also add these events to the Razorpay webhook: ${_s.info['webhookEvents']}',
+                  style: theme.textTheme.bodySmall),
+            ),
           if (_s.info['webhookUrl'] != null) ...[
             Text('Webhook URL to add in Razorpay', style: theme.textTheme.labelLarge),
             Row(children: [
@@ -215,12 +243,18 @@ class _IntegrationCardState extends ConsumerState<_IntegrationCard> {
           ],
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text(_s.provider == IntegrationProvider.RAZORPAY
-                ? 'Accept online payments'
-                : 'Send sign-in codes by SMS through 2Factor'),
-            subtitle: Text(_s.provider == IntegrationProvider.RAZORPAY
-                ? 'Customers can pay online. Venue offers need this.'
-                : 'When off, codes are not sent and only development sign-in works'),
+            title: Text(switch (_s.provider) {
+              IntegrationProvider.RAZORPAY => 'Accept online payments',
+              IntegrationProvider.TWO_FACTOR => 'Send sign-in codes by SMS through 2Factor',
+              IntegrationProvider.RAZORPAYX => 'Send payouts automatically',
+              IntegrationProvider.WHATSAPP => 'Send WhatsApp order alerts',
+            }),
+            subtitle: Text(switch (_s.provider) {
+              IntegrationProvider.RAZORPAY => 'Customers can pay online. Venue offers need this.',
+              IntegrationProvider.TWO_FACTOR => 'When off, codes are not sent and only development sign-in works',
+              IntegrationProvider.RAZORPAYX => 'When off, pay shops by bank or UPI and record the reference on the Payouts page',
+              IntegrationProvider.WHATSAPP => 'New orders to shops, progress to customers',
+            }),
             value: _enabled,
             onChanged: _busy ? null : (v) => setState(() => _enabled = v),
           ),

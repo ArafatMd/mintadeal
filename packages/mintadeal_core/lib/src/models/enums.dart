@@ -183,7 +183,9 @@ enum RefundStatus {
 
 enum IntegrationProvider {
   RAZORPAY('Razorpay', 'Online payments'),
-  TWO_FACTOR('2Factor', 'SMS sign-in codes');
+  TWO_FACTOR('2Factor', 'SMS sign-in codes'),
+  RAZORPAYX('RazorpayX', 'Automatic payouts to shops'),
+  WHATSAPP('WhatsApp', 'Order alerts to shops and customers');
 
   const IntegrationProvider(this.label, this.purpose);
 
@@ -208,4 +210,18 @@ enum JobStatus {
   bool get isActive => this == REQUESTED || this == ASSIGNED || this == PICKED_UP;
 
   static JobStatus parse(Object? s) => _byName(values, s, REQUESTED);
+}
+
+enum PayoutStatus {
+  PENDING('Ready to send'),
+  PROCESSING('On its way'),
+  PAID('Paid'),
+  FAILED('Failed'),
+  CANCELLED('Cancelled');
+
+  const PayoutStatus(this.label);
+
+  final String label;
+
+  static PayoutStatus parse(Object? s) => _byName(values, s, PENDING);
 }

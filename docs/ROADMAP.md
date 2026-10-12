@@ -9,7 +9,7 @@ working from end to end rather than an API nobody calls.
 | **2. Shops and discovery** | Vendor onboarding and review; products and venue offers; Nearby and Deals in Bangalore rules; follow shops | Area picker, Nearby, Bangalore, search and filters, listing detail, storefront, follow | Register shop, review status, listings, publish/pause, stock, shop and delivery settings | Profile shell | Vendor queue, approve/reject/suspend, internal vendor type, listing moderation, staff roles | Done |
 | **3. Orders** | Cart, multi-shop checkout into sub-orders, price snapshots, stock reservation, acceptance timeout and auto-cancel, rejection reasons, pay on delivery/pickup, Razorpay Payment Links with signed webhook, refunds, Razorpay and 2Factor settings | Cart, checkout, payment hand-off, my orders, order timeline | Order inbox with alert and badge, accept/reject, ready, out for delivery, complete | | Order search, cancel and refund, Integrations settings | Done |
 | **4. Venue QR and delivery** | Single-use QR for venue offers; delivery jobs; partner booking with cost shown to the shop; cost recovery ledger | QR in order, live delivery status | Scan QR, request delivery partner | Job list, pickup, proof of delivery, status updates | Delivery jobs, assign or cancel riders, shop dues | Done |
-| **5. Payments and payouts** | Razorpay Route split settlement, commission, payout statements, refund retries, double-entry ledger, WhatsApp/SMS order alerts | UPI prepay, refunds | Earnings and payouts | | Reconciliation, payout batches | Next |
+| **5. Payments and payouts** | Commission, double-entry ledger, payout batches (RazorpayX or manual), refund retries, WhatsApp order alerts | UPI prepay, refunds | Earnings and payouts | | Money overview, commission rates, payouts, failed refunds, message log | Done |
 | **6. Pilot hardening** | Ratings, support tickets, rate limiting, monitoring, backups | Ratings, help | Performance stats | | Support queue | |
 
 ## Decisions taken in Stages 1-2
@@ -55,3 +55,22 @@ working from end to end rather than an API nobody calls.
 - **A failed delivery returns the order to the shop**, which can book another rider. Cancelling an order closes its
   delivery job.
 - **Rider location tracking is not built yet**; customers see milestones (rider assigned, picked up, delivered).
+
+## Decisions taken in Stage 5
+
+- **Commission is a percentage of the item price** on completed orders (default 5% until an admin sets rates, with
+  optional per-category rates). The shop keeps its own delivery fee. The rate is fixed on the order when it is
+  placed. Mintadeal's own catalogue pays no commission.
+- **Double-entry ledger.** Every money movement is a journal whose entries sum to zero, posted at most once per
+  event, so retried webhooks and duplicate clicks never count money twice. The admin Money page flags any imbalance.
+- **One balance per shop.** Online earnings, commission (also on pay-on-delivery orders) and delivery charges all
+  net into it. A shop's delivery-booking limit uses what it owes after its earnings are netted off.
+- **Payouts are batched by an admin** and either sent through RazorpayX (automatic, confirmed by webhook) or paid by
+  bank/UPI and recorded with the reference. Shops without a UPI ID or bank account are listed as skipped. A failed or
+  cancelled payout returns the money to the shop's balance. Minimum payout ₹100.
+- **Mintadeal collects online payments and pays shops out.** Before going live with real money, confirm with your
+  CA/lawyer whether this needs Razorpay Route (split settlement to shops' linked accounts) instead, so that
+  Mintadeal does not hold shops' money. The ledger and payout records would stay; only the payout step changes.
+- **WhatsApp Cloud API with approved templates** for alerts: new orders to the shop, progress (accepted, ready, out
+  for delivery, completed, cancelled) to the customer. Sent after the order change is saved, in the background, and
+  logged; a failing provider never blocks an order. Push notifications in the apps are not built yet.

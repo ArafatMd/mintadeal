@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 
 import 'charges_screen.dart';
+import 'earnings_tab.dart';
 import 'listings_tab.dart';
 import 'scan_screen.dart';
 import 'order_alerts.dart';
@@ -128,6 +129,7 @@ class _DashboardState extends ConsumerState<_Dashboard> {
     final pages = [
       ListingsTab(shop: widget.shop),
       const OrdersTab(),
+      EarningsTab(shop: widget.shop),
       _ShopTab(shop: widget.shop),
     ];
     return Scaffold(
@@ -142,6 +144,10 @@ class _DashboardState extends ConsumerState<_Dashboard> {
             selectedIcon: Badge(isLabelVisible: newOrders > 0, label: Text('$newOrders'), child: const Icon(Icons.receipt_long)),
             label: 'Orders',
           ),
+          const NavigationDestination(
+              icon: Icon(Icons.account_balance_wallet_outlined),
+              selectedIcon: Icon(Icons.account_balance_wallet),
+              label: 'Earnings'),
           const NavigationDestination(
               icon: Icon(Icons.storefront_outlined), selectedIcon: Icon(Icons.storefront), label: 'My shop'),
         ],

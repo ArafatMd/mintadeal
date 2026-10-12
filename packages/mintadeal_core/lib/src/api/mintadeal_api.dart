@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../models/enums.dart';
+import '../models/finance.dart';
 import '../models/models.dart';
 import '../models/orders.dart';
 import 'api_client.dart';
@@ -315,4 +316,48 @@ class MintadealApi {
 
   Future<ShopCharges> adminVendorCharges(String vendorId) async =>
       ShopCharges.fromJson(await client.get('/api/admin/delivery/charges', query: {'vendorId': vendorId}) as Json);
+
+  // --- Money: shop ---
+
+  Future<Earnings> earnings() async => Earnings.fromJson(await client.get('/api/vendor/earnings') as Json);
+
+  // --- Money: admin ---
+
+  Future<FinanceSummary> financeSummary() async =>
+      FinanceSummary.fromJson(await client.get('/api/admin/finance/summary') as Json);
+
+  Future<List<VendorBalance>> vendorBalances() async => [
+        for (final v in await client.get('/api/admin/finance/vendor-balances') as List) VendorBalance.fromJson(v as Json)
+      ];
+
+  Future<CommissionRates> commissionRates() async =>
+      CommissionRates.fromJson(await client.get('/api/admin/finance/commission') as Json);
+
+  Future<CommissionRates> saveCommissionRates(CommissionRates rates) async =>
+      CommissionRates.fromJson(await client.put('/api/admin/finance/commission', rates.toJson()) as Json);
+
+  Future<PayoutBatchResult> createPayoutBatch() async =>
+      PayoutBatchResult.fromJson(await client.post('/api/admin/finance/payouts/batches') as Json);
+
+  /// [status] is OPEN, ALL or a payout status.
+  Future<PageResult<PayoutView>> payouts({String status = 'OPEN', int page = 0}) async => PageResult.fromJson(
+      await client.get('/api/admin/finance/payouts', query: {'status': status, 'page': page}) as Json,
+      PayoutView.fromJson);
+
+  Future<List<PayoutView>> sendPendingPayouts() async => [
+        for (final p in await client.post('/api/admin/finance/payouts/send-pending') as List) PayoutView.fromJson(p as Json)
+      ];
+
+  Future<PayoutView> payoutAction(String id, String action, {String? utr, String? reason}) async =>
+      PayoutView.fromJson(await client.post('/api/admin/finance/payouts/$id/$action',
+          utr != null ? {'utr': utr} : reason != null ? {'reason': reason} : null) as Json);
+
+  Future<List<RefundRow>> failedRefunds() async =>
+      [for (final r in await client.get('/api/admin/finance/refunds') as List) RefundRow.fromJson(r as Json)];
+
+  Future<RefundRow> retryRefund(String id) async =>
+      RefundRow.fromJson(await client.post('/api/admin/finance/refunds/$id/retry') as Json);
+
+  Future<PageResult<NotificationRow>> notificationLog({int page = 0}) async => PageResult.fromJson(
+      await client.get('/api/admin/finance/notifications', query: {'page': page}) as Json, NotificationRow.fromJson);
 }

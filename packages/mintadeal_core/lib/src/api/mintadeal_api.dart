@@ -255,4 +255,64 @@ class MintadealApi {
     final j = await client.post('/api/admin/settings/${provider.name}/test', {'phone': phone}) as Json;
     return (j['ok'] as bool, j['message'] as String);
   }
+
+  // --- Venue offer QR (shop) ---
+
+  Json _codeBody(String? code, String? orderCode, String? phoneLast4) =>
+      {'code': code, 'orderCode': orderCode, 'phoneLast4': phoneLast4};
+
+  Future<RedemptionCheck> checkRedemption({String? code, String? orderCode, String? phoneLast4}) async =>
+      RedemptionCheck.fromJson(
+          await client.post('/api/vendor/redemptions/check', _codeBody(code, orderCode, phoneLast4)) as Json);
+
+  Future<RedemptionCheck> redeem({String? code, String? orderCode, String? phoneLast4}) async =>
+      RedemptionCheck.fromJson(
+          await client.post('/api/vendor/redemptions/redeem', _codeBody(code, orderCode, phoneLast4)) as Json);
+
+  // --- Partner delivery (shop) ---
+
+  Future<DeliveryCostQuote> deliveryQuote(String orderId) async =>
+      DeliveryCostQuote.fromJson(await client.get('/api/vendor/orders/$orderId/delivery/quote') as Json);
+
+  Future<DeliveryCostQuote> requestDelivery(String orderId) async =>
+      DeliveryCostQuote.fromJson(await client.post('/api/vendor/orders/$orderId/delivery') as Json);
+
+  Future<void> cancelDelivery(String orderId) => client.post('/api/vendor/orders/$orderId/delivery/cancel');
+
+  Future<ShopCharges> shopCharges() async => ShopCharges.fromJson(await client.get('/api/vendor/charges') as Json);
+
+  // --- Delivery partner app ---
+
+  Future<List<DeliveryJobView>> availableJobs({GeoPoint? at}) async => [
+        for (final j in await client.get('/api/delivery/jobs/available', query: {'lat': at?.lat, 'lng': at?.lng}) as List)
+          DeliveryJobView.fromJson(j as Json)
+      ];
+
+  /// [scope] is ACTIVE or HISTORY.
+  Future<List<DeliveryJobView>> myJobs(String scope) async => [
+        for (final j in await client.get('/api/delivery/jobs', query: {'scope': scope}) as List)
+          DeliveryJobView.fromJson(j as Json)
+      ];
+
+  Future<DeliveryJobView> job(String id) async =>
+      DeliveryJobView.fromJson(await client.get('/api/delivery/jobs/$id') as Json);
+
+  Future<DeliveryJobView> jobAction(String id, String action, {String? code, String? reason}) async =>
+      DeliveryJobView.fromJson(await client.post('/api/delivery/jobs/$id/$action',
+          code != null ? {'code': code} : reason != null ? {'reason': reason} : null) as Json);
+
+  // --- Admin delivery ---
+
+  Future<PageResult<DeliveryJobView>> adminJobs({String status = 'ACTIVE', int page = 0}) async => PageResult.fromJson(
+      await client.get('/api/admin/delivery/jobs', query: {'status': status, 'page': page}) as Json,
+      DeliveryJobView.fromJson);
+
+  Future<DeliveryJobView> adminAssignJob(String id, String phone) async =>
+      DeliveryJobView.fromJson(await client.post('/api/admin/delivery/jobs/$id/assign', {'phone': phone}) as Json);
+
+  Future<DeliveryJobView> adminCancelJob(String id, String reason) async =>
+      DeliveryJobView.fromJson(await client.post('/api/admin/delivery/jobs/$id/cancel', {'reason': reason}) as Json);
+
+  Future<ShopCharges> adminVendorCharges(String vendorId) async =>
+      ShopCharges.fromJson(await client.get('/api/admin/delivery/charges', query: {'vendorId': vendorId}) as Json);
 }

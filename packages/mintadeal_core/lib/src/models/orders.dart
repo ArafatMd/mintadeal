@@ -241,6 +241,8 @@ class OrderDetail {
         cancelReason = j['cancelReason'] as String?,
         refundStatus = j['refund'] == null ? null : RefundStatus.parse((j['refund'] as Json)['status']),
         refundAmountMinor = j['refund'] == null ? null : _int((j['refund'] as Json)['amountMinor']),
+        delivery = j['delivery'] == null ? null : DeliveryInfo.fromJson(j['delivery'] as Json),
+        redemption = j['redemption'] == null ? null : RedemptionInfo.fromJson(j['redemption'] as Json),
         events = _list(j['events'], OrderEventEntry.fromJson),
         actions = [for (final a in j['actions'] as List) OrderAction.parse(a)],
         createdAt = _date(j['createdAt'])!;
@@ -269,6 +271,8 @@ class OrderDetail {
   final String? cancelReason;
   final RefundStatus? refundStatus;
   final int? refundAmountMinor;
+  final DeliveryInfo? delivery;
+  final RedemptionInfo? redemption;
   final List<OrderEventEntry> events;
   final List<OrderAction> actions;
   final DateTime createdAt;
@@ -310,4 +314,163 @@ class VendorOrderCounts {
 
   final int newOrders;
   final int activeOrders;
+}
+
+/// The delivery partner job behind a partner-delivery order.
+class DeliveryInfo {
+  DeliveryInfo.fromJson(Json j)
+      : status = JobStatus.parse(j['status']),
+        agentName = j['agentName'] as String?,
+        agentPhone = j['agentPhone'] as String?,
+        costMinor = (j['costMinor'] as num?)?.toInt(),
+        dropCode = j['dropCode'] as String?,
+        failureReason = j['failureReason'] as String?,
+        pickedUpAt = _date(j['pickedUpAt']);
+
+  final JobStatus status;
+  final String? agentName;
+  final String? agentPhone;
+
+  /// What the shop pays; only sent to the shop and admins.
+  final int? costMinor;
+
+  /// The handover code; only sent to the customer.
+  final String? dropCode;
+  final String? failureReason;
+  final DateTime? pickedUpAt;
+}
+
+class RedemptionInfo {
+  RedemptionInfo.fromJson(Json j)
+      : token = j['token'] as String?,
+        quantity = _int(j['quantity']),
+        validFrom = _date(j['validFrom']),
+        validTo = _date(j['validTo']),
+        usedAt = _date(j['usedAt']);
+
+  /// The QR payload; only sent to the customer while the offer can be used.
+  final String? token;
+  final int quantity;
+  final DateTime? validFrom;
+  final DateTime? validTo;
+  final DateTime? usedAt;
+}
+
+class RedemptionCheck {
+  RedemptionCheck.fromJson(Json j)
+      : valid = j['valid'] as bool,
+        problem = j['problem'] as String?,
+        orderId = j['orderId'] as String?,
+        orderCode = j['orderCode'] as String?,
+        title = j['title'] as String?,
+        quantity = _int(j['quantity']),
+        customerName = j['customerName'] as String?,
+        validTo = _date(j['validTo']),
+        usedAt = _date(j['usedAt']);
+
+  final bool valid;
+  final String? problem;
+  final String? orderId;
+  final String? orderCode;
+  final String? title;
+  final int quantity;
+  final String? customerName;
+  final DateTime? validTo;
+  final DateTime? usedAt;
+}
+
+class DeliveryCostQuote {
+  DeliveryCostQuote.fromJson(Json j)
+      : costMinor = _int(j['costMinor']),
+        distanceKm = (j['distanceKm'] as num).toDouble(),
+        outstandingMinor = _int(j['outstandingMinor']),
+        limitMinor = _int(j['limitMinor']),
+        allowed = j['allowed'] as bool,
+        problem = j['problem'] as String?;
+
+  final int costMinor;
+  final double distanceKm;
+  final int outstandingMinor;
+  final int limitMinor;
+  final bool allowed;
+  final String? problem;
+}
+
+class JobStop {
+  JobStop.fromJson(Json j)
+      : name = j['name'] as String?,
+        phone = j['phone'] as String?,
+        address = j['address'] as String?,
+        area = j['area'] as String,
+        lat = (j['latitude'] as num).toDouble(),
+        lng = (j['longitude'] as num).toDouble();
+
+  final String? name;
+  final String? phone;
+  final String? address;
+  final String area;
+  final double lat;
+  final double lng;
+}
+
+/// A delivery job as a rider or admin sees it.
+class DeliveryJobView {
+  DeliveryJobView.fromJson(Json j)
+      : id = j['id'] as String,
+        orderCode = j['orderCode'] as String,
+        status = JobStatus.parse(j['status']),
+        distanceKm = (j['distanceKm'] as num).toDouble(),
+        itemCount = _int(j['itemCount']),
+        cashToCollectMinor = _int(j['cashToCollectMinor']),
+        pickup = JobStop.fromJson(j['pickup'] as Json),
+        drop = JobStop.fromJson(j['drop'] as Json),
+        mine = j['mine'] as bool,
+        agentName = j['agentName'] as String?,
+        agentPhone = j['agentPhone'] as String?,
+        costMinor = (j['costMinor'] as num?)?.toInt(),
+        failureReason = j['failureReason'] as String?,
+        requestedAt = _date(j['requestedAt'])!,
+        pickedUpAt = _date(j['pickedUpAt']),
+        deliveredAt = _date(j['deliveredAt']);
+
+  final String id;
+  final String orderCode;
+  final JobStatus status;
+  final double distanceKm;
+  final int itemCount;
+  final int cashToCollectMinor;
+  final JobStop pickup;
+  final JobStop drop;
+  final bool mine;
+  final String? agentName;
+  final String? agentPhone;
+  final int? costMinor;
+  final String? failureReason;
+  final DateTime requestedAt;
+  final DateTime? pickedUpAt;
+  final DateTime? deliveredAt;
+}
+
+class ShopCharge {
+  ShopCharge.fromJson(Json j)
+      : amountMinor = _int(j['amountMinor']),
+        description = j['description'] as String,
+        status = j['status'] as String,
+        createdAt = _date(j['createdAt'])!;
+
+  final int amountMinor;
+  final String description;
+  final String status;
+  final DateTime createdAt;
+}
+
+class ShopCharges {
+  ShopCharges.fromJson(Json j)
+      : outstandingMinor = _int(j['outstandingMinor']),
+        limitMinor = _int(j['limitMinor']),
+        charges = _list(j['charges'], ShopCharge.fromJson);
+
+  final int outstandingMinor;
+  final int limitMinor;
+  final List<ShopCharge> charges;
 }

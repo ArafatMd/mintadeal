@@ -157,7 +157,10 @@ enum OrderAction {
   REJECT('Reject'),
   MARK_READY('Mark ready for pickup'),
   OUT_FOR_DELIVERY('Out for delivery'),
-  COMPLETE('Complete');
+  COMPLETE('Complete'),
+  REDEEM('Scan QR code'),
+  REQUEST_DELIVERY('Book delivery partner'),
+  CANCEL_DELIVERY('Cancel delivery partner');
 
   const OrderAction(this.label);
 
@@ -188,4 +191,21 @@ enum IntegrationProvider {
   final String purpose;
 
   static IntegrationProvider parse(Object? s) => _byName(values, s, RAZORPAY);
+}
+
+enum JobStatus {
+  REQUESTED('Waiting for a rider'),
+  ASSIGNED('Rider on the way to the shop'),
+  PICKED_UP('Out for delivery'),
+  DELIVERED('Delivered'),
+  FAILED('Delivery failed'),
+  CANCELLED('Cancelled');
+
+  const JobStatus(this.label);
+
+  final String label;
+
+  bool get isActive => this == REQUESTED || this == ASSIGNED || this == PICKED_UP;
+
+  static JobStatus parse(Object? s) => _byName(values, s, REQUESTED);
 }

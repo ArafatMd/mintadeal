@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'payment_screen.dart';
@@ -227,14 +228,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             ].join('\n')),
           ),
         ),
-      if (o.fulfilmentMode == FulfilmentMode.VENUE_QR && o.status == OrderStatus.ACCEPTED)
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.qr_code_2, size: 36),
-            title: Text('Show order ${o.code} at the venue'),
-            subtitle: const Text('A scannable QR code arrives in the next update. Until then the shop checks this order number.'),
-          ),
-        ),
+      if (o.redemption != null) _VenueQr(order: o, redemption: o.redemption!),
+      if (o.delivery != null) _PartnerDelivery(delivery: o.delivery!),
       const SizedBox(height: 16),
       Card(
         child: ListTile(
@@ -346,5 +341,99 @@ class _StatusSteps extends StatelessWidget {
         ]),
       ],
     ]);
+  }
+}
+
+/// The venue offer's QR, shown full width so the shop can scan it straight off the phone.
+class _VenueQr extends StatelessWidget {
+  const _VenueQr({required this.order, required this.redemption});
+
+  final OrderDetail order;
+  final RedemptionInfo redemption;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final date = DateFormat('d MMM yyyy');
+    final token = redemption.token;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(children: [
+          if (redemption.usedAt != null) ...[
+            Icon(Icons.check_circle, color: Colors.green.shade700, size: 40),
+            const SizedBox(height: 8),
+            Text('Used on ${DateFormat('d MMM, h:mm a').format(redemption.usedAt!)}', style: theme.textTheme.titleMedium),
+          ] else if (token != null) ...[
+            Text('Show this at the venue', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 12),
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(12),
+              child: QrImageView(
+                data: token,
+                size: 220,
+                backgroundColor: Colors.white,
+                semanticsLabel: 'QR code for order ${order.code}',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('${redemption.quantity} ${redemption.quantity == 1 ? 'person' : 'people'} · works once',
+                style: theme.textTheme.bodyMedium),
+            if (redemption.validTo != null)
+              Text('Valid until ${date.format(redemption.validTo!)}', style: theme.textTheme.bodySmall),
+            const SizedBox(height: 8),
+            Text('If it will not scan, give the shop order number ${order.code} and the last 4 digits of your phone.',
+                textAlign: TextAlign.center, style: theme.textTheme.bodySmall),
+          ] else
+            Text('This offer can no longer be used', style: theme.textTheme.bodyMedium),
+        ]),
+      ),
+    );
+  }
+}
+
+/// The Mintadeal delivery partner for this order and the code that proves the handover.
+class _PartnerDelivery extends StatelessWidget {
+  const _PartnerDelivery({required this.delivery});
+
+  final DeliveryInfo delivery;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.delivery_dining),
+            const SizedBox(width: 8),
+            Expanded(child: Text(delivery.status.label, style: theme.textTheme.titleSmall)),
+          ]),
+          if (delivery.agentName != null || delivery.agentPhone != null)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(delivery.agentName ?? 'Your delivery partner'),
+              subtitle: const Text('Mintadeal delivery partner'),
+              trailing: delivery.agentPhone == null
+                  ? null
+                  : IconButton(
+                      tooltip: 'Call delivery partner',
+                      onPressed: () => launchUrl(Uri(scheme: 'tel', path: delivery.agentPhone)),
+                      icon: const Icon(Icons.call_outlined),
+                    ),
+            ),
+          if (delivery.dropCode != null) ...[
+            const SizedBox(height: 8),
+            Text('Delivery code', style: theme.textTheme.labelLarge),
+            Text(delivery.dropCode!, style: theme.textTheme.displaySmall?.copyWith(letterSpacing: 8, fontWeight: FontWeight.w700)),
+            Text('Give this code to the delivery partner only when you have your order.', style: theme.textTheme.bodySmall),
+          ],
+          if (delivery.failureReason != null && delivery.status == JobStatus.FAILED)
+            Text('Last attempt: ${delivery.failureReason}', style: theme.textTheme.bodySmall),
+        ]),
+      ),
+    );
   }
 }

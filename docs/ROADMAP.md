@@ -8,8 +8,8 @@ working from end to end rather than an API nobody calls.
 | **1. Foundation** | Phone OTP sign-in, JWT, roles, audit trail, image upload | Sign-in | Sign-in | Sign-in (delivery partners only) | Sign-in (admins only) | Done |
 | **2. Shops and discovery** | Vendor onboarding and review; products and venue offers; Nearby and Deals in Bangalore rules; follow shops | Area picker, Nearby, Bangalore, search and filters, listing detail, storefront, follow | Register shop, review status, listings, publish/pause, stock, shop and delivery settings | Profile shell | Vendor queue, approve/reject/suspend, internal vendor type, listing moderation, staff roles | Done |
 | **3. Orders** | Cart, multi-shop checkout into sub-orders, price snapshots, stock reservation, acceptance timeout and auto-cancel, rejection reasons, pay on delivery/pickup, Razorpay Payment Links with signed webhook, refunds, Razorpay and 2Factor settings | Cart, checkout, payment hand-off, my orders, order timeline | Order inbox with alert and badge, accept/reject, ready, out for delivery, complete | | Order search, cancel and refund, Integrations settings | Done |
-| **4. Venue QR and delivery** | Single-use QR for venue offers; delivery jobs; partner booking with cost shown to the shop; cost recovery ledger | QR in order, live delivery status | Scan QR, request delivery partner | Job list, pickup, proof of delivery, status updates | Delivery bookings, failures, dues | Next |
-| **5. Payments and payouts** | Razorpay Route split settlement, commission, payout statements, refund retries, double-entry ledger, WhatsApp/SMS order alerts | UPI prepay, refunds | Earnings and payouts | | Reconciliation, payout batches | |
+| **4. Venue QR and delivery** | Single-use QR for venue offers; delivery jobs; partner booking with cost shown to the shop; cost recovery ledger | QR in order, live delivery status | Scan QR, request delivery partner | Job list, pickup, proof of delivery, status updates | Delivery jobs, assign or cancel riders, shop dues | Done |
+| **5. Payments and payouts** | Razorpay Route split settlement, commission, payout statements, refund retries, double-entry ledger, WhatsApp/SMS order alerts | UPI prepay, refunds | Earnings and payouts | | Reconciliation, payout batches | Next |
 | **6. Pilot hardening** | Ratings, support tickets, rate limiting, monitoring, backups | Ratings, help | Performance stats | | Support queue | |
 
 ## Decisions taken in Stages 1-2
@@ -38,3 +38,20 @@ working from end to end rather than an API nobody calls.
 - **Venue offers are always paid online** and confirmed automatically on payment. Until the QR code arrives in
   Stage 4, the shop checks the order number and marks it used.
 - **New-order alerts poll every 20 seconds** while the shop app is open. WhatsApp/SMS alerts come in Stage 5.
+
+## Decisions taken in Stage 4
+
+- **Venue offer QR:** a random 192-bit code checked by the server, issued when the offer is paid. It works once,
+  only at the shop that sold it, only within the offer's dates. One QR covers every person in the order.
+  If scanning fails, the shop enters the order number and the last 4 digits of the customer's phone.
+- **The shop never sees the QR code itself**, and cannot mark a venue offer used without it.
+- **Unused offers that expire stay paid.** The QR stops working; refunds for unused offers are an admin decision
+  until the business sets a per-offer rule.
+- **Riders take jobs from a shared board** (first come, first served; two riders cannot take the same job), or an
+  admin assigns one by phone number. A rider sees the customer's phone and exact address only after taking the job.
+- **Handover needs the customer's 4-digit delivery code.** Five wrong tries lock the job until support steps in.
+- **Partner cost = ₹30 + ₹8 per started km** (configurable), shown to the shop before booking and charged when the
+  rider picks up. A shop with more than ₹2,000 unpaid cannot book more riders. Payout deductions are Stage 5.
+- **A failed delivery returns the order to the shop**, which can book another rider. Cancelling an order closes its
+  delivery job.
+- **Rider location tracking is not built yet**; customers see milestones (rider assigned, picked up, delivered).

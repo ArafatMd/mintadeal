@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 
+import 'delivery_page.dart';
 import 'listings_page.dart';
 import 'orders_page.dart';
 import 'settings_page.dart';
@@ -18,7 +19,7 @@ class AdminShell extends ConsumerStatefulWidget {
 class _AdminShellState extends ConsumerState<AdminShell> {
   int _index = 0;
 
-  static const _pages = [VendorsPage(), OrdersPage(), ListingsPage(), SettingsPage(), UsersPage()];
+  static const _pages = [VendorsPage(), OrdersPage(), DeliveryPage(), ListingsPage(), SettingsPage(), UsersPage()];
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +28,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     final destinations = const [
       (Icons.storefront_outlined, Icons.storefront, 'Vendors'),
       (Icons.receipt_long_outlined, Icons.receipt_long, 'Orders'),
+      (Icons.delivery_dining_outlined, Icons.delivery_dining, 'Delivery'),
       (Icons.sell_outlined, Icons.sell, 'Listings'),
       (Icons.settings_outlined, Icons.settings, 'Integrations'),
       (Icons.badge_outlined, Icons.badge, 'Staff & roles'),

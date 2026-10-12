@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'scan_screen.dart';
+
 final _shopOrder = FutureProvider.autoDispose.family<OrderDetail, String>((ref, id) => ref.watch(apiProvider).shopOrder(id));
 
 class ShopOrderScreen extends ConsumerStatefulWidget {
@@ -26,6 +28,19 @@ class _ShopOrderScreenState extends ConsumerState<ShopOrderScreen> {
   ];
 
   Future<void> _act(OrderDetail o, OrderAction action) async {
+    if (action == OrderAction.REDEEM) {
+      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScanScreen()));
+      ref.invalidate(_shopOrder(widget.orderId));
+      return;
+    }
+    if (action == OrderAction.REQUEST_DELIVERY) {
+      await _bookPartner(o);
+      return;
+    }
+    if (action == OrderAction.CANCEL_DELIVERY) {
+      await _run(() => ref.read(apiProvider).cancelDelivery(o.id));
+      return;
+    }
     String? reason;
     if (action == OrderAction.REJECT) {
       reason = await _askRejectReason();
@@ -39,6 +54,61 @@ class _ShopOrderScreenState extends ConsumerState<ShopOrderScreen> {
       if (mounted) showError(context, e);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _run(Future<void> Function() action) async {
+    setState(() => _busy = true);
+    try {
+      await action();
+      ref.invalidate(_shopOrder(widget.orderId));
+    } catch (e) {
+      if (mounted) showError(context, e);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Shows the partner's cost first; the shop confirms before anything is booked.
+  Future<void> _bookPartner(OrderDetail o) async {
+    final DeliveryCostQuote quote;
+    try {
+      quote = await ref.read(apiProvider).deliveryQuote(o.id);
+    } catch (e) {
+      if (mounted) showError(context, e);
+      return;
+    }
+    if (!mounted) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Book a delivery partner?'),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('${quote.distanceKm.toStringAsFixed(1)} km to the customer'),
+          const SizedBox(height: 8),
+          Text('Cost to your shop: ${formatInr(quote.costMinor)}', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          const Text('Charged when the partner picks up the order, and deducted from your payout.'),
+          if (o.paymentStatus != PaymentStatus.PAID) ...[
+            const SizedBox(height: 8),
+            Text('The partner collects ${formatInr(o.totalMinor)} from the customer for you.'),
+          ],
+          if (!quote.allowed) ...[
+            const SizedBox(height: 12),
+            Text(quote.problem ?? '', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ],
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Not now')),
+          FilledButton(onPressed: quote.allowed ? () => Navigator.pop(context, true) : null, child: const Text('Book partner')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await _run(() async {
+        await ref.read(apiProvider).requestDelivery(o.id);
+        if (mounted) showMessage(context, 'Delivery partner requested. Keep the order packed and ready.');
+      });
     }
   }
 
@@ -92,6 +162,9 @@ class _ShopOrderScreenState extends ConsumerState<ShopOrderScreen> {
             FulfilmentMode.VENUE_QR => 'Customer used the offer',
             _ => 'Delivered',
           },
+        OrderAction.REDEEM => 'Scan customer QR',
+        OrderAction.REQUEST_DELIVERY => 'Book delivery partner',
+        OrderAction.CANCEL_DELIVERY => 'Cancel partner',
         _ => a.label,
       };
 
@@ -117,8 +190,8 @@ class _ShopOrderScreenState extends ConsumerState<ShopOrderScreen> {
                   for (final (i, a) in order.value!.actions.reversed.indexed) ...[
                     if (i > 0) const SizedBox(width: 12),
                     Expanded(
-                      flex: a == OrderAction.REJECT ? 1 : 2,
-                      child: a == OrderAction.REJECT
+                      flex: a == OrderAction.REJECT || a == OrderAction.CANCEL_DELIVERY ? 1 : 2,
+                      child: a == OrderAction.REJECT || a == OrderAction.CANCEL_DELIVERY
                           ? OutlinedButton(onPressed: _busy ? null : () => _act(order.value!, a), child: Text(_actionLabel(order.value!, a)))
                           : FilledButton(onPressed: _busy ? null : () => _act(order.value!, a), child: Text(_actionLabel(order.value!, a))),
                     ),
@@ -175,6 +248,40 @@ class _ShopOrderScreenState extends ConsumerState<ShopOrderScreen> {
                 ),
         ),
       ),
+      if (o.delivery != null) ...[
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.delivery_dining),
+            title: Text(o.delivery!.status.label),
+            subtitle: Text([
+              if (o.delivery!.agentName != null) 'Partner: ${o.delivery!.agentName}',
+              if (o.delivery!.costMinor != null) 'Cost to shop: ${formatInr(o.delivery!.costMinor!)}',
+              if (o.delivery!.failureReason != null) o.delivery!.failureReason!,
+            ].join('\n')),
+            trailing: o.delivery!.agentPhone == null
+                ? null
+                : IconButton(
+                    tooltip: 'Call delivery partner',
+                    onPressed: () => launchUrl(Uri(scheme: 'tel', path: o.delivery!.agentPhone)),
+                    icon: const Icon(Icons.call_outlined),
+                  ),
+          ),
+        ),
+      ],
+      if (o.redemption != null) ...[
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.qr_code_2),
+            title: Text(o.redemption!.usedAt != null
+                ? 'Used ${DateFormat('d MMM, h:mm a').format(o.redemption!.usedAt!)}'
+                : 'Customer shows a QR code at your venue'),
+            subtitle: Text('For ${o.redemption!.quantity} ${o.redemption!.quantity == 1 ? 'person' : 'people'}'
+                '${o.redemption!.validTo == null ? '' : ' · valid until ${DateFormat('d MMM yyyy').format(o.redemption!.validTo!)}'}'),
+          ),
+        ),
+      ],
       if (o.note != null) ...[
         const SizedBox(height: 8),
         Card(child: ListTile(leading: const Icon(Icons.sticky_note_2_outlined), title: const Text('Note'), subtitle: Text(o.note!))),

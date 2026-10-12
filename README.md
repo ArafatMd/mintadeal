@@ -13,8 +13,8 @@ the build plan is in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 | `backend/` | Marketplace API (one modular application) | Java 25, Spring Boot 4.1, PostgreSQL, Flyway |
 | `packages/mintadeal_core/` | Shared Dart code: API client, models, phone sign-in, theme, widgets | Dart 3.13 |
 | `apps/customer_app/` | Customer app: Nearby, Deals in Bangalore, shops, following, cart, checkout, orders | Flutter 3.47 (Android, iOS, web) |
-| `apps/vendor_app/` | Shop app: register, listings, stock, shop settings, order inbox | Flutter 3.47 (Android, iOS, web) |
-| `apps/delivery_app/` | Delivery partner app | Flutter 3.47 (Android, iOS, web) |
+| `apps/vendor_app/` | Shop app: register, listings, stock, shop settings, order inbox, QR scanner, delivery partner booking | Flutter 3.47 (Android, iOS, web) |
+| `apps/delivery_app/` | Delivery partner app: job board, pickup, handover with the customer's code | Flutter 3.47 (Android, iOS, web) |
 | `apps/admin_web/` | Admin website: vendor review, orders, listing moderation, Razorpay and 2Factor settings, staff roles | Flutter 3.47 (web) |
 
 The Flutter projects are one [pub workspace](https://dart.dev/tools/pub/workspaces): run `flutter pub get`

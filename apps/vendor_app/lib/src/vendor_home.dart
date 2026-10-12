@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 
+import 'charges_screen.dart';
 import 'listings_tab.dart';
+import 'scan_screen.dart';
 import 'order_alerts.dart';
 import 'orders_tab.dart';
 import 'providers.dart';
@@ -179,6 +181,21 @@ class _ShopTab extends ConsumerWidget {
             subtitle: Text(ways.isEmpty ? 'Venue offers only' : ways.join(' · ')),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShopFormScreen(existing: shop))),
+          ),
+          if (shop.partnerDelivery)
+            ListTile(
+              leading: const Icon(Icons.receipt_outlined),
+              title: const Text('Delivery partner charges'),
+              subtitle: const Text('What you owe Mintadeal for partner deliveries'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChargesScreen())),
+            ),
+          ListTile(
+            leading: const Icon(Icons.qr_code_scanner),
+            title: const Text('Scan an offer QR'),
+            subtitle: const Text('For hotel, restaurant, service and event offers'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScanScreen())),
           ),
           if (shop.vendorType == VendorType.INTERNAL)
             const ListTile(leading: Icon(Icons.verified_outlined), title: Text('Mintadeal own catalogue')),

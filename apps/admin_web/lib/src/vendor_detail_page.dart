@@ -8,6 +8,9 @@ import 'dialogs.dart';
 final _vendorDetail = FutureProvider.autoDispose.family<VendorDetail, String>(
     (ref, id) => ref.watch(apiProvider).adminVendor(id));
 
+final _vendorCharges = FutureProvider.autoDispose.family<ShopCharges, String>(
+    (ref, id) => ref.watch(apiProvider).adminVendorCharges(id));
+
 class VendorDetailPage extends ConsumerStatefulWidget {
   const VendorDetailPage({super.key, required this.vendorId});
 
@@ -160,6 +163,18 @@ class _VendorDetailPageState extends ConsumerState<VendorDetailPage> {
             ]),
           ),
         ),
+        const SizedBox(height: 16),
+        Consumer(builder: (context, ref, _) {
+          final charges = ref.watch(_vendorCharges(v.id)).value;
+          if (charges == null || charges.charges.isEmpty) return const SizedBox.shrink();
+          return Card(
+            child: ListTile(
+              leading: const Icon(Icons.receipt_outlined),
+              title: Text('Unpaid delivery charges: ${formatInr(charges.outstandingMinor)}'),
+              subtitle: Text('${charges.charges.length} partner ${charges.charges.length == 1 ? 'delivery' : 'deliveries'} · limit ${formatInr(charges.limitMinor)}'),
+            ),
+          );
+        }),
         const SizedBox(height: 24),
         Text('Listings (${d.listings.length})', style: theme.textTheme.titleMedium),
         const SizedBox(height: 8),

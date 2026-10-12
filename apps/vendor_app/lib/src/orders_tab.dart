@@ -4,6 +4,7 @@ import 'package:mintadeal_core/mintadeal_core.dart';
 
 import 'order_alerts.dart';
 import 'order_detail_screen.dart';
+import 'scan_screen.dart';
 
 class OrdersTab extends ConsumerStatefulWidget {
   const OrdersTab({super.key});
@@ -37,7 +38,17 @@ class _OrdersTabState extends ConsumerState<OrdersTab> {
     final counts = ref.watch(orderCountsProvider);
     final api = ref.watch(apiProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
+      appBar: AppBar(title: const Text('Orders'), actions: [
+        TextButton.icon(
+          onPressed: () async {
+            await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScanScreen()));
+            setState(() => _reload++);
+          },
+          icon: const Icon(Icons.qr_code_scanner),
+          label: const Text('Scan QR'),
+        ),
+        const SizedBox(width: 8),
+      ]),
       body: Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),

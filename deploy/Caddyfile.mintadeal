@@ -1,0 +1,23 @@
+# Append these blocks to SkillPeck's ~/skillpeck/deploy/Caddyfile (replace mintadeal.in with your domain),
+# then: docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env up -d --force-recreate caddy
+
+api.mintadeal.in {
+	request_body max_size 8MB
+	reverse_proxy mintadeal-api:8080
+}
+
+app.mintadeal.in {
+	reverse_proxy mintadeal-web:8081
+}
+
+shop.mintadeal.in {
+	reverse_proxy mintadeal-web:8082
+}
+
+admin.mintadeal.in {
+	reverse_proxy mintadeal-web:8083
+}
+
+rider.mintadeal.in {
+	reverse_proxy mintadeal-web:8084
+}

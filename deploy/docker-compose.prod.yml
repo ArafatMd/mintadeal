@@ -1,0 +1,100 @@
+# Mintadeal production stack. Runs next to SkillPeck on the same server and uses SkillPeck's Caddy for HTTPS,
+# so nothing here publishes a port. See docs/DEPLOY.md.
+# Service names are prefixed because mintadeal-api and mintadeal-web also join SkillPeck's network, where a
+# plain name like "api" or "db" would clash with SkillPeck's own containers.
+#
+#   docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env up -d --build
+name: mintadeal
+
+services:
+  mintadeal-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mintadeal
+      POSTGRES_USER: mintadeal
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in deploy/.env}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mintadeal -d mintadeal"]
+      interval: 10s
+      retries: 10
+    mem_limit: 512m
+    networks: [internal]
+
+  mintadeal-api:
+    build: ../backend
+    image: mintadeal-api:latest
+    restart: unless-stopped
+    depends_on:
+      mintadeal-db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://mintadeal-db:5432/mintadeal
+      DB_USERNAME: mintadeal
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      OTP_PEPPER: ${OTP_PEPPER:?set OTP_PEPPER}
+      SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:?set SETTINGS_ENCRYPTION_KEY}
+      ADMIN_PHONES: ${ADMIN_PHONES:?set ADMIN_PHONES}
+      OTP_DEV_FIXED_CODE: ${FIRST_SIGNIN_CODE:-}
+      PUBLIC_BASE_URL: https://api.${DOMAIN:?set DOMAIN}
+      CORS_ORIGINS: https://app.${DOMAIN},https://shop.${DOMAIN},https://admin.${DOMAIN},https://rider.${DOMAIN}
+      TZ: Asia/Kolkata
+    volumes:
+      - files:/data/files
+    mem_limit: 1g
+    networks:
+      internal:
+      edge:
+
+  # Serves the four Flutter web builds that are rsynced into deploy/web/<app>.
+  mintadeal-web:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    volumes:
+      - ./web.Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./web:/srv:ro
+    mem_limit: 64m
+    networks:
+      edge:
+
+  # Nightly database dump and uploaded-image archive into deploy/backups, kept for 14 days.
+  mintadeal-backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on: [mintadeal-db]
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Kolkata
+    volumes:
+      - ./backups:/backups
+      - files:/files:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          if [ "$$(date +%H%M)" = "0300" ]; then
+            stamp=$$(date +%Y%m%d-%H%M)
+            pg_dump -h mintadeal-db -U mintadeal -Fc mintadeal > /backups/mintadeal-$$stamp.dump \
+              && tar -czf /backups/files-$$stamp.tar.gz -C /files . \
+              && echo "backup $$stamp done" || echo "backup $$stamp FAILED"
+            find /backups -type f -mtime +14 -delete
+            sleep 60
+          fi
+          sleep 30
+        done
+    mem_limit: 128m
+    networks: [internal]
+
+volumes:
+  db:
+  files:
+
+networks:
+  internal:
+  # SkillPeck's Compose network, which its Caddy is on. Check the name with `docker network ls`.
+  edge:
+    external: true
+    name: ${EDGE_NETWORK:-deploy_default}

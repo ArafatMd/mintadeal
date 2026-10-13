@@ -87,3 +87,4 @@ Secrets are encrypted in the database with `SETTINGS_ENCRYPTION_KEY` and never s
 - Backend: set `JWT_SECRET`, `OTP_PEPPER`, `SETTINGS_ENCRYPTION_KEY` (long, random, never changed), `DB_URL`,
   `DB_USERNAME`, `DB_PASSWORD`, `PUBLIC_BASE_URL` (the public HTTPS address, used for the Razorpay webhook),
   `CORS_ORIGINS` and `ADMIN_PHONES`. Never deploy with the `dev` profile: it fixes OTPs to 123456 and fakes payments.
+- Server: see [docs/DEPLOY.md](docs/DEPLOY.md) for running it on the SkillPeck EC2 server with Docker Compose.

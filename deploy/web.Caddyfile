@@ -1,0 +1,33 @@
+# Internal static server for the Flutter web apps; SkillPeck's Caddy terminates HTTPS in front of it.
+{
+	admin off
+	auto_https off
+}
+
+(spa) {
+	encode gzip zstd
+	header /index.html Cache-Control "no-cache"
+	header /flutter_service_worker.js Cache-Control "no-cache"
+	try_files {path} /index.html
+	file_server
+}
+
+:8081 {
+	root * /srv/customer
+	import spa
+}
+
+:8082 {
+	root * /srv/vendor
+	import spa
+}
+
+:8083 {
+	root * /srv/admin
+	import spa
+}
+
+:8084 {
+	root * /srv/delivery
+	import spa
+}

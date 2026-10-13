@@ -22,3 +22,8 @@ build/
 .idea/
 .vscode/
 .DS_Store
+
+# Deployment
+deploy/.env
+deploy/backups/
+deploy/web/

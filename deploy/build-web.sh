@@ -6,6 +6,8 @@ set -euo pipefail
 : "${SERVER:?set SERVER, e.g. ubuntu@13.200.0.1}"
 SSH="ssh${KEY:+ -i $KEY}"
 cd "$(dirname "$0")/.."
+$SSH "$SERVER" 'mkdir -p ~/mintadeal/deploy/web && test -w ~/mintadeal/deploy/web' \
+  || { echo "Cannot write ~/mintadeal/deploy/web on the server; run: sudo chown -R ubuntu ~/mintadeal/deploy/web"; exit 1; }
 
 for pair in customer_app:customer vendor_app:vendor admin_web:admin delivery_app:delivery; do
   app=${pair%%:*} target=${pair##*:}

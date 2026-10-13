@@ -102,6 +102,7 @@ secrets in the database. If it is lost or changed, those settings must be entere
 
 ```bash
 cd ~/mintadeal
+mkdir -p deploy/web deploy/backups   # before the first start, so Docker does not create them owned by root
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env up -d --build
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env logs -f mintadeal-api
 ```

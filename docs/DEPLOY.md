@@ -6,7 +6,7 @@ blocks and gets the HTTPS certificates for them.
 
 ```
 Internet ──443──▶ SkillPeck Caddy ─┬─ SkillPeck sites (unchanged)
-                                   ├─ api.mintadeal.in    ─▶ mintadeal-api:8080  ─▶ mintadeal-db (private network)
+                                   ├─ api.mintadeal.com    ─▶ mintadeal-api:8080  ─▶ mintadeal-db (private network)
                                    └─ app/shop/admin/rider ─▶ mintadeal-web:8081-8084 (static Flutter builds)
 ```
 
@@ -18,7 +18,7 @@ Internet ──443──▶ SkillPeck Caddy ─┬─ SkillPeck sites (unchanged
 | `https://admin.<domain>` | Admin website |
 | `https://rider.<domain>` | Delivery app (web) |
 
-Replace `mintadeal.in` with your domain everywhere below.
+The domain is `mintadeal.com`, with DNS on Cloudflare.
 
 Mintadeal uses about 0.5 GB of RAM when idle. It is capped at 1.7 GB: API 1 GB, database 512 MB, web and
 backup about 200 MB. Its containers, volumes and network all start with `mintadeal`, so they never clash with
@@ -114,10 +114,10 @@ then press Ctrl+C. The database tables are created automatically on first start.
 Flutter web is built on your computer and uploaded, the same way as SkillPeck. From the repository root:
 
 ```bash
-DOMAIN=mintadeal.in SERVER=ubuntu@<elastic-ip> KEY=~/.ssh/<your-key>.pem deploy/build-web.sh
+DOMAIN=mintadeal.com SERVER=ubuntu@<elastic-ip> KEY=~/.ssh/<your-key>.pem deploy/build-web.sh
 ```
 
-The script builds all four apps with `API_BASE_URL=https://api.mintadeal.in` and rsyncs them to
+The script builds all four apps with `API_BASE_URL=https://api.mintadeal.com` and rsyncs them to
 `~/mintadeal/deploy/web/`. New files are served immediately, with no restart.
 
 ## 8. Plug into SkillPeck's Caddy
@@ -129,10 +129,10 @@ The script builds all four apps with `API_BASE_URL=https://api.mintadeal.in` and
    cp deploy/Caddyfile deploy/Caddyfile.bak-$(date +%F)
    ```
 
-2. Add the Mintadeal blocks. Leave `mintadeal.in` as it is if that is your domain; otherwise put your domain in place of `YOUR-DOMAIN`:
+2. Add the Mintadeal blocks:
 
    ```bash
-   sed 's/mintadeal\.in/YOUR-DOMAIN/g' ~/mintadeal/deploy/Caddyfile.mintadeal >> deploy/Caddyfile
+   cat ~/mintadeal/deploy/Caddyfile.mintadeal >> deploy/Caddyfile
    ```
 
 3. Check the file before Caddy reloads it:
@@ -158,16 +158,16 @@ next `git pull` in `~/skillpeck` will conflict with it.
 ## 9. Check it works
 
 ```bash
-curl -s https://api.mintadeal.in/actuator/health      # {"groups":["liveness","readiness"],"status":"UP"}
+curl -s https://api.mintadeal.com/actuator/health      # {"groups":["liveness","readiness"],"status":"UP"}
 ```
 
-Then open `https://app.mintadeal.in`.
+Then open `https://app.mintadeal.com`.
 
 ## 10. First sign-in and switching on 2Factor
 
 Until 2Factor is set up, no SMS can be sent.
 
-1. Open `https://admin.mintadeal.in` and enter one of the `ADMIN_PHONES`.
+1. Open `https://admin.mintadeal.com` and enter one of the `ADMIN_PHONES`.
 2. Use the `FIRST_SIGNIN_CODE` from `deploy/.env` as the OTP. Numbers listed in `ADMIN_PHONES` become admins on
    sign-in.
 3. Go to **Integrations → 2Factor**, enter the API key, and press **Test** with your number.
@@ -186,7 +186,7 @@ Until 2Factor is set up, no SMS can be sent.
 Then:
 
 - **Razorpay:** set it up under Integrations (see the README). The webhook URL is
-  `https://api.mintadeal.in/api/webhooks/razorpay`.
+  `https://api.mintadeal.com/api/webhooks/razorpay`.
 - **WhatsApp and RazorpayX:** set up when you are ready.
 - **Admin numbers:** to add more, put them in `ADMIN_PHONES` and restart `mintadeal-api`.
 
@@ -196,7 +196,7 @@ The Play Store and APK builds need the same API address:
 
 ```bash
 cd apps/vendor_app   # or customer_app, delivery_app
-flutter build apk --release --dart-define=API_BASE_URL=https://api.mintadeal.in
+flutter build apk --release --dart-define=API_BASE_URL=https://api.mintadeal.com
 ```
 
 ## Updating

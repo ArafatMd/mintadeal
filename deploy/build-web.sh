@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Builds the four Flutter web apps on your computer and uploads them to the server.
-#   DOMAIN=mintadeal.in SERVER=ubuntu@<elastic-ip> KEY=~/.ssh/skillpeck-prod.pem deploy/build-web.sh
+#   DOMAIN=mintadeal.com SERVER=ubuntu@<elastic-ip> KEY=~/.ssh/skillpeck-prod.pem deploy/build-web.sh
 set -euo pipefail
-: "${DOMAIN:?set DOMAIN, e.g. mintadeal.in}"
+: "${DOMAIN:?set DOMAIN, e.g. mintadeal.com}"
 : "${SERVER:?set SERVER, e.g. ubuntu@13.200.0.1}"
 SSH="ssh${KEY:+ -i $KEY}"
 cd "$(dirname "$0")/.."

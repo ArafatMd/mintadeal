@@ -36,7 +36,7 @@ mintadeal:
   jwt:
     # Must be overridden in every deployed environment.
     secret: ${JWT_SECRET:dev-only-secret-change-me-0123456789abcdef}
-    issuer: https://api.mintadeal.in
+    issuer: https://api.mintadeal.com
     ttl: 30d
   otp:
     ttl: 5m

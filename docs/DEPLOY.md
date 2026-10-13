@@ -129,18 +129,23 @@ The script builds all four apps with `API_BASE_URL=https://api.mintadeal.com` an
    cp deploy/Caddyfile deploy/Caddyfile.bak-$(date +%F)
    ```
 
-2. Add the Mintadeal blocks:
+2. Make sure the file ends with a closing `}` (the last block is SkillPeck's `www.` redirect), then add the
+   Mintadeal blocks. They reuse SkillPeck's `security_headers` snippet, so they must go in this file, after it:
 
    ```bash
+   tail -3 deploy/Caddyfile
    cat ~/mintadeal/deploy/Caddyfile.mintadeal >> deploy/Caddyfile
    ```
 
-3. Check the file before Caddy reloads it:
+3. Check the file inside the running Caddy, which has SkillPeck's domain variables. Nothing is reloaded yet:
 
    ```bash
-   docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine \
+   docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env exec caddy \
      caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
    ```
+
+   It must end with `Valid configuration`. If not, restore the backup (`cp deploy/Caddyfile.bak-* deploy/Caddyfile`)
+   and send me the error.
 
 4. Recreate Caddy. SkillPeck is down for a second or two:
 

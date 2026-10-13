@@ -1,23 +1,36 @@
-# Append these blocks to SkillPeck's ~/skillpeck/deploy/Caddyfile,
-# then: docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env up -d --force-recreate caddy
+
+# ---- Mintadeal (served from ~/mintadeal; see docs/DEPLOY.md in the mintadeal repository) ----
+# Uses the security_headers snippet defined at the top of this file.
 
 api.mintadeal.com {
-	request_body max_size 8MB
+	import security_headers
+	encode gzip
 	reverse_proxy mintadeal-api:8080
+	# Product images up to 5 MB
+	request_body {
+		max_size 8MB
+	}
 }
 
 app.mintadeal.com {
+	import security_headers
 	reverse_proxy mintadeal-web:8081
 }
 
 shop.mintadeal.com {
+	import security_headers
 	reverse_proxy mintadeal-web:8082
+	header X-Robots-Tag "noindex, nofollow"
 }
 
 admin.mintadeal.com {
+	import security_headers
 	reverse_proxy mintadeal-web:8083
+	header X-Robots-Tag "noindex, nofollow"
 }
 
 rider.mintadeal.com {
+	import security_headers
 	reverse_proxy mintadeal-web:8084
+	header X-Robots-Tag "noindex, nofollow"
 }

@@ -14,6 +14,7 @@ class PagedList<T> extends StatefulWidget {
     this.header,
     this.padding = const EdgeInsets.fromLTRB(16, 8, 16, 24),
     this.separator = 12,
+    this.columns,
   });
 
   final Object queryKey;
@@ -23,6 +24,9 @@ class PagedList<T> extends StatefulWidget {
   final Widget? header;
   final EdgeInsets padding;
   final double separator;
+
+  /// Lays items out in a grid: how many columns fit the available width. Null shows a single column.
+  final int Function(double width)? columns;
 
   @override
   State<PagedList<T>> createState() => _PagedListState<T>();
@@ -81,36 +85,63 @@ class _PagedListState<T> extends State<PagedList<T>> {
     }
   }
 
+  List<Widget> _rows(BuildContext context, double maxWidth) {
+    final columns = widget.columns;
+    if (columns == null) {
+      return [
+        for (final (i, item) in _items.indexed) ...[
+          if (i > 0) SizedBox(height: widget.separator),
+          widget.itemBuilder(context, item),
+        ],
+      ];
+    }
+    final width = maxWidth - widget.padding.horizontal;
+    final n = columns(width).clamp(1, 8);
+    return [
+      for (var start = 0; start < _items.length; start += n) ...[
+        if (start > 0) SizedBox(height: widget.separator),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var i = start; i < start + n; i++) ...[
+              if (i > start) SizedBox(width: widget.separator),
+              Expanded(child: i < _items.length ? widget.itemBuilder(context, _items[i]) : const SizedBox.shrink()),
+            ],
+          ],
+        ),
+      ],
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final showEmpty = _items.isEmpty && !_loading && _error == null && !_hasMore;
     final showError = _items.isEmpty && _error != null;
     return RefreshIndicator(
       onRefresh: _reload,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (n) {
-          if (n.metrics.pixels > n.metrics.maxScrollExtent - 400) _loadMore();
-          return false;
-        },
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: widget.padding,
-          children: [
-            ?widget.header,
-            if (showError) ErrorView(message: '$_error', onRetry: _reload),
-            if (showEmpty) widget.empty,
-            for (final (i, item) in _items.indexed) ...[
-              if (i > 0) SizedBox(height: widget.separator),
-              widget.itemBuilder(context, item),
+      child: LayoutBuilder(
+        builder: (context, constraints) => NotificationListener<ScrollNotification>(
+          onNotification: (n) {
+            if (n.metrics.pixels > n.metrics.maxScrollExtent - 400) _loadMore();
+            return false;
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: widget.padding,
+            children: [
+              ?widget.header,
+              if (showError) ErrorView(message: '$_error', onRetry: _reload),
+              if (showEmpty) widget.empty,
+              ..._rows(context, constraints.maxWidth),
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              if (_items.isNotEmpty && _error != null)
+                TextButton(onPressed: _loadMore, child: const Text('Could not load more. Try again')),
             ],
-            if (_loading)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            if (_items.isNotEmpty && _error != null)
-              TextButton(onPressed: _loadMore, child: const Text('Could not load more. Try again')),
-          ],
+          ),
         ),
       ),
     );

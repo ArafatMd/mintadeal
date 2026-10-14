@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'cart_bar.dart';
 import 'cart_button.dart';
-import 'listing_card.dart';
+import 'product_tile.dart';
 import 'providers.dart';
 import 'sign_in.dart';
 
@@ -26,22 +27,25 @@ class StorefrontScreen extends ConsumerWidget {
         data: (s) => RefreshIndicator(
           onRefresh: () => ref.refresh(storefrontProvider(key).future),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
             children: [
-              _Header(store: s, onFollow: () => _toggleFollow(context, ref, s, key)),
-              const SizedBox(height: 20),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: _Header(store: s, onFollow: () => _toggleFollow(context, ref, s, key)),
+                ),
+              ),
+              const SizedBox(height: 18),
               Text('Products and offers', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               if (s.listings.isEmpty)
                 const EmptyView(icon: Icons.inventory_2_outlined, title: 'No live listings right now'),
-              for (final item in s.listings) ...[
-                ListingCard(item: item, at: at, showVendor: false),
-                const SizedBox(height: 12),
-              ],
+              ProductGrid(items: s.listings, at: at, showVendor: false),
             ],
           ),
         ),
       ),
+      bottomNavigationBar: const SafeArea(top: false, child: CartBar()),
     );
   }
 

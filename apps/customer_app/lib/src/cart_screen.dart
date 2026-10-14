@@ -183,74 +183,82 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               const SizedBox(height: 12),
             ],
             if (quote.addressRequired) ...[
-              Text('Delivery address', style: theme.textTheme.titleMedium),
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: () => pickArea(context, ref),
-                child: InputDecorator(
-                  decoration: const InputDecoration(labelText: 'Area'),
-                  child: Row(children: [
-                    Expanded(child: Text(ref.watch(areaProvider).name)),
-                    const Icon(Icons.expand_more),
-                  ]),
+              _Section(title: 'Delivery address', icon: Icons.location_on_outlined, children: [
+                InkWell(
+                  onTap: () => pickArea(context, ref),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(labelText: 'Area'),
+                    child: Row(children: [
+                      Expanded(child: Text(ref.watch(areaProvider).name)),
+                      const Icon(Icons.expand_more),
+                    ]),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _line,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(labelText: 'House / flat, street'),
-                onChanged: (_) => _requote(),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _landmark,
-                decoration: const InputDecoration(labelText: 'Landmark (optional)'),
-              ),
-              const SizedBox(height: 16),
-            ],
-            Text('Your details', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _name,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(labelText: 'Name for the shop'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _note,
-              maxLength: 500,
-              decoration: const InputDecoration(labelText: 'Note for the shop (optional)', counterText: ''),
-            ),
-            const SizedBox(height: 16),
-            Text('Payment', style: theme.textTheme.titleMedium),
-            RadioGroup<PaymentMethod>(
-              groupValue: _payment,
-              onChanged: (m) {
-                setState(() => _payment = m);
-                _requote(soon: true);
-              },
-              child: Column(children: [
-                RadioListTile<PaymentMethod>(
-                  contentPadding: EdgeInsets.zero,
-                  value: PaymentMethod.ONLINE,
-                  enabled: quote.onlinePaymentAvailable,
-                  title: const Text('Pay online'),
-                  subtitle: Text(quote.onlinePaymentAvailable ? 'UPI, cards and wallets' : 'Not available yet'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _line,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(labelText: 'House / flat, street'),
+                  onChanged: (_) => _requote(),
                 ),
-                RadioListTile<PaymentMethod>(
-                  contentPadding: EdgeInsets.zero,
-                  value: PaymentMethod.PAY_ON_DELIVERY,
-                  enabled: quote.payOnDeliveryAllowed,
-                  title: const Text('Pay the shop on delivery or pickup'),
-                  subtitle: Text(quote.payOnDeliveryAllowed ? 'Cash or UPI to the shop' : 'Venue offers are paid online'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _landmark,
+                  decoration: const InputDecoration(labelText: 'Landmark (optional)'),
                 ),
               ]),
-            ),
-            const Divider(height: 24),
-            _TotalRow('Items', quote.itemsTotalMinor),
-            if (quote.deliveryTotalMinor > 0) _TotalRow('Delivery', quote.deliveryTotalMinor),
-            _TotalRow('Total', quote.grandTotalMinor, bold: true),
+              const SizedBox(height: 12),
+            ],
+            _Section(title: 'Your details', icon: Icons.person_outline, children: [
+              TextField(
+                controller: _name,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(labelText: 'Name for the shop'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _note,
+                maxLength: 500,
+                decoration: const InputDecoration(labelText: 'Note for the shop (optional)', counterText: ''),
+              ),
+            ]),
+            const SizedBox(height: 12),
+            _Section(title: 'Payment', icon: Icons.account_balance_wallet_outlined, children: [
+              RadioGroup<PaymentMethod>(
+                groupValue: _payment,
+                onChanged: (m) {
+                  setState(() => _payment = m);
+                  _requote(soon: true);
+                },
+                child: Column(children: [
+                  RadioListTile<PaymentMethod>(
+                    contentPadding: EdgeInsets.zero,
+                    value: PaymentMethod.ONLINE,
+                    enabled: quote.onlinePaymentAvailable,
+                    title: const Text('Pay online'),
+                    subtitle: Text(quote.onlinePaymentAvailable ? 'UPI, cards and wallets' : 'Not available yet'),
+                  ),
+                  RadioListTile<PaymentMethod>(
+                    contentPadding: EdgeInsets.zero,
+                    value: PaymentMethod.PAY_ON_DELIVERY,
+                    enabled: quote.payOnDeliveryAllowed,
+                    title: const Text('Pay the shop on delivery or pickup'),
+                    subtitle: Text(quote.payOnDeliveryAllowed ? 'Cash or UPI to the shop' : 'Venue offers are paid online'),
+                  ),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 12),
+            if (_savings(cart) > 0) ...[
+              _SavingsBanner(amountMinor: _savings(cart)),
+              const SizedBox(height: 12),
+            ],
+            _Section(title: 'Bill details', icon: Icons.receipt_long_outlined, children: [
+              _TotalRow('Items total', quote.itemsTotalMinor),
+              _TotalRow('Delivery', quote.deliveryTotalMinor, freeWhenZero: quote.addressRequired),
+              const Divider(height: 16),
+              _TotalRow('To pay', quote.grandTotalMinor, bold: true),
+            ]),
             for (final p in quote.problems)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -264,14 +272,23 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           : SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: FilledButton(
-                  onPressed: quote.canPlace && !_placing && !_quoting ? _place : null,
-                  child: _placing
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      : Text(_payment == PaymentMethod.ONLINE
-                          ? 'Pay ${formatInr(quote.grandTotalMinor)}'
-                          : 'Place order · ${formatInr(quote.grandTotalMinor)}'),
-                ),
+                child: Row(children: [
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                    Text(formatInr(quote.grandTotalMinor), style: theme.textTheme.titleLarge),
+                    Text('TOTAL', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  ]),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: quote.canPlace && !_placing && !_quoting ? _place : null,
+                      child: _placing
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          : Text(_payment == PaymentMethod.ONLINE
+                              ? 'Pay ${formatInr(quote.grandTotalMinor)}'
+                              : 'Place order'),
+                    ),
+                  ),
+                ]),
               ),
             ),
     );
@@ -391,19 +408,92 @@ class _QuantityStepper extends StatelessWidget {
   }
 }
 
+/// What the customer saves against the shops' usual prices (from the cart; display only).
+int _savings(List<CartEntry> cart) => cart.fold(0, (s, e) {
+  final offer = e.offerPriceMinor;
+  return offer != null && offer < e.priceMinor ? s + (e.priceMinor - offer) * e.quantity : s;
+});
+
+/// A white card with a small heading, for each part of checkout.
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.icon, required this.children});
+
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 20, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(title, style: theme.textTheme.titleSmall),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SavingsBanner extends StatelessWidget {
+  const _SavingsBanner({required this.amountMinor});
+
+  final int amountMinor;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(color: scheme.primaryContainer, borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        children: [
+          Icon(Icons.local_offer, size: 18, color: scheme.onPrimaryContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'You are saving ${formatInr(amountMinor)} on this order',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(color: scheme.onPrimaryContainer),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TotalRow extends StatelessWidget {
-  const _TotalRow(this.label, this.amountMinor, {this.bold = false});
+  const _TotalRow(this.label, this.amountMinor, {this.bold = false, this.freeWhenZero = false});
 
   final String label;
   final int amountMinor;
   final bool bold;
+  final bool freeWhenZero;
 
   @override
   Widget build(BuildContext context) {
     final style = bold ? Theme.of(context).textTheme.titleMedium : Theme.of(context).textTheme.bodyMedium;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(children: [Expanded(child: Text(label, style: style)), Text(formatInr(amountMinor), style: style)]),
+      child: Row(children: [
+        Expanded(child: Text(label, style: style)),
+        Text(freeWhenZero && amountMinor == 0 ? 'FREE' : formatInr(amountMinor),
+            style: freeWhenZero && amountMinor == 0
+                ? style?.copyWith(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700)
+                : style),
+      ]),
     );
   }
 }

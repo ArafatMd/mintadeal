@@ -39,6 +39,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/api/webhooks/**", "/dev/pay/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/discovery/**", "/files/**").permitAll()
+                        // Customers see the bill (prices, delivery, options) before they sign in, like any shop.
+                        .requestMatchers(HttpMethod.POST, "/api/customer/checkout/quote").permitAll()
                         .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**",
                                 "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/admin/**").hasRole(Role.ADMIN.name())

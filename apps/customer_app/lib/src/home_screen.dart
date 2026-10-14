@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'account_screen.dart';
+import 'cart_bar.dart';
 import 'deals_feed.dart';
 import 'following_screen.dart';
 import 'orders_screen.dart';
@@ -21,27 +22,28 @@ class _HomeScreenState extends State<HomeScreen> {
       body: IndexedStack(
         index: _tab,
         children: const [
-          DealsFeed(scope: FeedScope.nearby),
-          DealsFeed(scope: FeedScope.bangalore),
+          DealsFeed(),
           FollowingScreen(),
           OrdersScreen(),
           AccountScreen(),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.near_me_outlined), selectedIcon: Icon(Icons.near_me), label: 'Nearby'),
-          NavigationDestination(
-              icon: Icon(Icons.location_city_outlined), selectedIcon: Icon(Icons.location_city), label: 'Bangalore'),
-          NavigationDestination(
-              icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite), label: 'Following'),
-          NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Orders'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Account'),
-        ],
-      ),
+      bottomNavigationBar: Column(mainAxisSize: MainAxisSize.min, children: [
+        // The cart bar follows the customer while they shop.
+        if (_tab <= 1) const CartBar(),
+        NavigationBar(
+          selectedIndex: _tab,
+          onDestinationSelected: (i) => setState(() => _tab = i),
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
+            NavigationDestination(
+                icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite), label: 'Following'),
+            NavigationDestination(
+                icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Orders'),
+            NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Account'),
+          ],
+        ),
+      ]),
     );
   }
 }

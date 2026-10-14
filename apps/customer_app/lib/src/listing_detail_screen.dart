@@ -43,9 +43,23 @@ class _Detail extends StatelessWidget {
     final theme = Theme.of(context);
     final dates = DateFormat('d MMM yyyy');
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
-        Center(child: CatalogueImage(url: l.imageUrl, category: l.category, size: 240, radius: 16)),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: AspectRatio(
+            aspectRatio: 4 / 3,
+            child: Container(
+              color: theme.brightness == Brightness.light
+                  ? MintadealColors.imageWell
+                  : theme.colorScheme.surfaceContainerHigh,
+              child: l.imageUrl == null
+                  ? Icon(l.category.icon, size: 72, color: theme.colorScheme.outline)
+                  : Image.network(l.imageUrl!, fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Icon(l.category.icon, size: 72, color: theme.colorScheme.outline)),
+            ),
+          ),
+        ),
         const SizedBox(height: 16),
         Text(l.title, style: theme.textTheme.headlineSmall),
         const SizedBox(height: 8),

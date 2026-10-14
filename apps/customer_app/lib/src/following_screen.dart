@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 
 import 'area.dart';
-import 'listing_card.dart';
+import 'product_tile.dart';
 import 'providers.dart';
 import 'sign_in.dart';
 import 'storefront_screen.dart';
@@ -55,7 +55,10 @@ class FollowingScreen extends ConsumerWidget {
                   ),
                 ),
                 fetch: (page) => api.nearby(area.point, followedOnly: true, page: page),
-                itemBuilder: (context, item) => ListingCard(item: item, at: area.point),
+                columns: productColumns,
+                separator: 10,
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                itemBuilder: (context, item) => ProductTile(item: item, at: area.point),
                 empty: EmptyView(
                   icon: Icons.local_offer_outlined,
                   title: 'No deals from your shops near ${area.name}',

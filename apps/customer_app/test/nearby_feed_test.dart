@@ -35,6 +35,10 @@ Map<String, dynamic> _item(String title, {bool venue = false}) => {
 
 void main() {
   testWidgets('Nearby shows deals from the API with price and availability', (tester) async {
+    // A phone screen: two product columns.
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
     SharedPreferences.setMockInitialValues({});
     final requests = <Uri>[];
     final client = MockClient((req) async {
@@ -56,10 +60,45 @@ void main() {
     expect(find.text('Nearby deals'), findsOneWidget);
     expect(find.text('Aashirvaad Atta 5 kg'), findsOneWidget);
     expect(find.text('₹269'), findsOneWidget);
-    expect(find.text('9% off'), findsOneWidget);
+    expect(find.text('9%\nOFF'), findsOneWidget);
+    expect(find.text('ADD'), findsOneWidget);
     expect(find.text('Pickup'), findsOneWidget);
     expect(requests.first.path, '/api/discovery/nearby');
     expect(requests.first.queryParameters['lat'], '12.9116');
+
+    // ADD turns into a quantity stepper and the cart bar appears with the total and savings.
+    await tester.tap(find.text('ADD'));
+    await tester.pumpAndSettle();
+    expect(find.text('ADD'), findsNothing);
+    expect(find.byTooltip('Remove'), findsOneWidget);
+    expect(find.text('1 item · ₹269'), findsOneWidget);
+    expect(find.text('You save ₹26'), findsOneWidget);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -200));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+    expect(find.text('2 items · ₹538'), findsOneWidget);
+  });
+
+  testWidgets('All Bangalore switches the feed to city-wide deals', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final requests = <Uri>[];
+    final client = MockClient((req) async {
+      requests.add(req.url);
+      return http.Response('{"items":[],"page":0,"size":20,"total":0}', 200);
+    });
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        apiProvider.overrideWithValue(
+            MintadealApi(ApiClient(baseUrl: 'http://test', token: () => null, httpClient: client))),
+      ],
+      child: const CustomerApp(),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All Bangalore'));
+    await tester.pumpAndSettle();
+    expect(find.text('Deals in Bangalore'), findsOneWidget);
+    expect(requests.last.path, '/api/discovery/bangalore');
   });
 
   testWidgets('Following asks a signed-out customer to sign in', (tester) async {

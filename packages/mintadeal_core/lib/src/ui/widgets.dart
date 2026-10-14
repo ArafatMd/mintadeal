@@ -59,13 +59,13 @@ class DealBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondary,
+        color: Theme.of(context).colorScheme.primary,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(text,
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSecondary,
-                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onPrimary,
+                fontWeight: FontWeight.w700,
               )),
     );
   }
@@ -86,8 +86,8 @@ class CatalogueImage extends StatelessWidget {
     final placeholder = Container(
       width: size,
       height: size,
-      color: scheme.primaryContainer,
-      child: Icon(category.icon, color: scheme.onPrimaryContainer, size: size * 0.45),
+      color: scheme.tertiaryContainer,
+      child: Icon(category.icon, color: scheme.onTertiaryContainer.withValues(alpha: 0.7), size: size * 0.45),
     );
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),

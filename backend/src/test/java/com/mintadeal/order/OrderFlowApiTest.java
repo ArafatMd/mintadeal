@@ -26,6 +26,12 @@ class OrderFlowApiTest extends OrderTestBase {
                 .andExpect(jsonPath("$.addressRequired").value(false))
                 .andExpect(jsonPath("$.groups[0].selectedMode").value("PICKUP"))
                 .andExpect(jsonPath("$.grandTotalMinor").value(59000));
+        // The bill is shown before signing in; placing the order still needs a signed-in customer.
+        call(POST("/api/customer/checkout/quote"), null, cart("q", "PAY_ON_DELIVERY", null, null, atta, "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.grandTotalMinor").value(59000));
+        call(POST("/api/customer/checkout"), null, cart("r0", "PAY_ON_DELIVERY", null, null, atta, "2"))
+                .andExpect(status().isUnauthorized());
 
         String orderId = read(call(POST("/api/customer/checkout"), customer,
                 cart("r1", "PAY_ON_DELIVERY", null, null, atta, "2"))

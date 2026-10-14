@@ -37,7 +37,8 @@ If memory is tight, the biggest user is usually Ollama.
 
 ## 2. DNS (Cloudflare)
 
-Add five **A** records pointing at the same Elastic IP as SkillPeck: `api`, `app`, `shop`, `admin` and `rider`.
+Add **A** records pointing at the same Elastic IP as SkillPeck: `api`, `app`, `shop`, `admin` and `rider`, plus
+`@` (the bare `mintadeal.com`, for the website) and `www`.
 Set each one to **DNS only** (grey cloud), the same as SkillPeck's records, so Caddy can get certificates.
 
 The security group already allows 80/443, so it needs no change.
@@ -135,7 +136,7 @@ The script builds all four apps with `API_BASE_URL=https://api.mintadeal.com` an
 
    ```bash
    tail -3 deploy/Caddyfile
-   cat ~/mintadeal/deploy/Caddyfile.mintadeal >> deploy/Caddyfile
+   cat ~/mintadeal/deploy/Caddyfile.mintadeal ~/mintadeal/deploy/Caddyfile.website >> deploy/Caddyfile
    ```
 
 3. Check the file inside the running Caddy, which has SkillPeck's domain variables. Nothing is reloaded yet:
@@ -196,6 +197,38 @@ Then:
 - **WhatsApp and RazorpayX:** set up when you are ready.
 - **Admin numbers:** to add more, put them in `ADMIN_PHONES` and restart `mintadeal-api`.
 
+## The website (mintadeal.com)
+
+The public website is plain HTML in `website/`, served by the `mintadeal-web` container on port 8085. `git pull` on
+the server updates it, with no rebuild or restart. `www.mintadeal.com` redirects to `mintadeal.com`.
+
+Your business details (registered name, phone, WhatsApp, email, address and grievance officer) are in
+`website/assets/site-config.js`. Until they are filled in, those places show "To be added". Razorpay checks them
+against your KYC before switching on live payments, so fill them in first: edit the file in VS Code, commit, push,
+then `git pull` on the server.
+
+**Adding the website to a server that already runs Mintadeal** (set up before the website existed):
+
+1. In Cloudflare, add A records for `@` and `www` to the Elastic IP, **DNS only**.
+2. On the server, pull and recreate the web container so it serves `website/`:
+
+   ```bash
+   cd ~/mintadeal && git pull
+   docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env up -d mintadeal-web
+   ```
+
+3. Add **only** the website blocks to SkillPeck's Caddyfile (the other Mintadeal blocks are already there), check
+   it, then reload Caddy:
+
+   ```bash
+   cd ~/skillpeck
+   cp deploy/Caddyfile deploy/Caddyfile.bak-$(date +%F)
+   cat ~/mintadeal/deploy/Caddyfile.website >> deploy/Caddyfile
+   C="docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env"
+   $C exec caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile 2>&1 | tail -1
+   $C up -d --force-recreate caddy
+   ```
+
 ## Android apps
 
 The Play Store and APK builds need the same API address:
@@ -212,7 +245,7 @@ cd ~/mintadeal && git pull
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env up -d --build mintadeal-api
 ```
 
-If the apps changed, run `deploy/build-web.sh` again from your computer. Database migrations run on API start.
+If the apps changed, run `deploy/build-web.sh` again from your computer. The website needs only the `git pull`. Database migrations run on API start.
 The API is unavailable for about 30 seconds while it restarts.
 
 ## Backups

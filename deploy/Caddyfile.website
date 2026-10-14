@@ -1,0 +1,13 @@
+
+# ---- Mintadeal website (website/ in the mintadeal repository) ----
+# Append to SkillPeck's ~/skillpeck/deploy/Caddyfile after the blocks from Caddyfile.mintadeal.
+# www redirects to the bare domain so the site has one address.
+
+mintadeal.com {
+	import security_headers
+	reverse_proxy mintadeal-web:8085
+}
+
+www.mintadeal.com {
+	redir https://mintadeal.com{uri} permanent
+}

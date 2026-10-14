@@ -49,13 +49,14 @@ services:
       internal:
       edge:
 
-  # Serves the four Flutter web builds that are rsynced into deploy/web/<app>.
+  # Serves the four Flutter web builds rsynced into deploy/web/<app>, and the website from website/.
   mintadeal-web:
     image: caddy:2-alpine
     restart: unless-stopped
     volumes:
       - ./web.Caddyfile:/etc/caddy/Caddyfile:ro
       - ./web:/srv:ro
+      - ../website:/srv/site:ro
     mem_limit: 64m
     networks:
       edge:

@@ -31,3 +31,17 @@
 	root * /srv/delivery
 	import spa
 }
+
+# The public website (website/ in the repository, served as is: `git pull` updates it).
+:8085 {
+	root * /srv/site
+	encode gzip zstd
+	header /assets/* Cache-Control "public, max-age=86400"
+	# /terms serves terms.html
+	try_files {path} {path}.html
+	file_server
+	handle_errors {
+		rewrite * /index.html
+		file_server
+	}
+}

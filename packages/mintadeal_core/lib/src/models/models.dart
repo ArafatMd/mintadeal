@@ -9,13 +9,14 @@ int? _int(Object? v) => (v as num?)?.toInt();
 double? _double(Object? v) => (v as num?)?.toDouble();
 
 class AppUser {
-  AppUser({required this.id, required this.phone, this.name, this.email, required this.roles});
+  AppUser({required this.id, required this.phone, this.name, this.email, this.avatarUrl, required this.roles});
 
   factory AppUser.fromJson(Json j) => AppUser(
         id: j['id'] as String,
         phone: j['phone'] as String,
         name: j['name'] as String?,
         email: j['email'] as String?,
+        avatarUrl: j['avatarUrl'] as String?,
         roles: [for (final r in j['roles'] as List) Role.parse(r)],
       );
 
@@ -23,6 +24,9 @@ class AppUser {
   final String phone;
   final String? name;
   final String? email;
+
+  /// Profile photo, or null to show initials.
+  final String? avatarUrl;
   final List<Role> roles;
 
   bool has(Role role) => roles.contains(role);
@@ -32,6 +36,7 @@ class AppUser {
         'phone': phone,
         'name': name,
         'email': email,
+        'avatarUrl': avatarUrl,
         'roles': [for (final r in roles) r.name],
       };
 }
@@ -99,6 +104,7 @@ class VendorPublic {
         area = j['area'] as String,
         openingHours = j['openingHours'] as String?,
         logoUrl = j['logoUrl'] as String?,
+        coverUrl = j['coverUrl'] as String?,
         selfDelivery = j['selfDelivery'] as bool,
         partnerDelivery = j['partnerDelivery'] as bool,
         pickup = j['pickup'] as bool,
@@ -117,6 +123,9 @@ class VendorPublic {
   final String area;
   final String? openingHours;
   final String? logoUrl;
+
+  /// The shop's banner photo for its card and storefront.
+  final String? coverUrl;
   final bool selfDelivery;
   final bool partnerDelivery;
   final bool pickup;
@@ -270,4 +279,49 @@ class VendorDetail {
   final Vendor vendor;
   final List<Listing> listings;
   final List<AuditEntry> history;
+}
+
+/// A home screen banner, as customers see it.
+class HomeBanner {
+  HomeBanner.fromJson(Json j)
+      : id = j['id'] as String,
+        title = j['title'] as String,
+        subtitle = j['subtitle'] as String?,
+        kicker = j['kicker'] as String?,
+        imageUrl = j['imageUrl'] as String,
+        targetType = BannerTarget.parse(j['targetType']),
+        targetCategory = j['targetCategory'] == null ? null : VendorCategory.parse(j['targetCategory']),
+        targetId = j['targetId'] as String?;
+
+  final String id;
+  final String title;
+  final String? subtitle;
+  final String? kicker;
+  final String imageUrl;
+  final BannerTarget targetType;
+  final VendorCategory? targetCategory;
+  final String? targetId;
+}
+
+/// A banner as admins manage it.
+class AdminBanner extends HomeBanner {
+  AdminBanner.fromJson(super.j)
+      : targetName = j['targetName'] as String?,
+        scope = BannerScope.parse(j['scope']),
+        startsAt = _date(j['startsAt']),
+        endsAt = _date(j['endsAt']),
+        position = _int(j['position']) ?? 0,
+        active = j['active'] as bool? ?? false,
+        live = j['live'] as bool? ?? false,
+        super.fromJson();
+
+  final String? targetName;
+  final BannerScope scope;
+  final DateTime? startsAt;
+  final DateTime? endsAt;
+  final int position;
+  final bool active;
+
+  /// Customers can see it right now: active, within its dates, and its shop or product is live.
+  final bool live;
 }

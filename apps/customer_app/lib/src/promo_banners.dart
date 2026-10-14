@@ -3,17 +3,25 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 
-/// One banner: the best discount in a category, worked out from the shops on the home screen.
-class Promo {
-  const Promo({required this.category, required this.percent});
+/// One slide in the home carousel: an admin banner with its photo, or one made from real discounts.
+class Slide {
+  const Slide({required this.title, this.kicker, this.subtitle, this.imageUrl, this.icon, this.onTap});
 
-  final VendorCategory? category;
-  final int? percent;
+  final String title;
+  final String? kicker;
+  final String? subtitle;
+
+  /// The admin's photo; generated slides show [icon] on red instead.
+  final String? imageUrl;
+  final IconData? icon;
+
+  /// Null hides the View Deals button.
+  final VoidCallback? onTap;
 }
 
-/// Builds banners from real deals: the categories with the biggest discounts first, up to four.
-/// With no discounts at all there is one welcome banner.
-List<Promo> promosFrom(List<ShopCard> shops) {
+/// Slides from real deals: the categories with the biggest discounts first, up to four.
+/// With no discounts at all there is one welcome slide.
+List<Slide> slidesFromShops(List<ShopCard> shops, {required String kicker, required ValueChanged<VendorCategory?> onView}) {
   final best = <VendorCategory, int>{};
   for (final s in shops) {
     final p = s.bestDiscountPercent;
@@ -22,19 +30,34 @@ List<Promo> promosFrom(List<ShopCard> shops) {
     if (p > (best[c] ?? 0)) best[c] = p;
   }
   final sorted = best.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-  if (sorted.isEmpty) return const [Promo(category: null, percent: null)];
-  return [for (final e in sorted.take(4)) Promo(category: e.key, percent: e.value)];
+  if (sorted.isEmpty) {
+    return [
+      Slide(
+        kicker: kicker,
+        title: 'Local deals',
+        subtitle: 'From shops in your neighbourhood',
+        icon: Icons.storefront_outlined,
+        onTap: () => onView(null),
+      ),
+    ];
+  }
+  return [
+    for (final e in sorted.take(4))
+      Slide(
+        kicker: kicker,
+        title: 'Up to ${e.value}% Off',
+        subtitle: 'On ${e.key.label}',
+        icon: e.key.icon,
+        onTap: () => onView(e.key),
+      ),
+  ];
 }
 
-/// A sliding row of dark red banners with a yellow "View Deals" button and page dots.
+/// A sliding row of banners with a yellow "View Deals" button and page dots.
 class PromoCarousel extends StatefulWidget {
-  const PromoCarousel({super.key, required this.promos, required this.kicker, required this.onView});
+  const PromoCarousel({super.key, required this.slides});
 
-  final List<Promo> promos;
-
-  /// The small spaced-out line above the headline, e.g. "SAVINGS NEAR YOU".
-  final String kicker;
-  final ValueChanged<VendorCategory?> onView;
+  final List<Slide> slides;
 
   @override
   State<PromoCarousel> createState() => _PromoCarouselState();
@@ -49,8 +72,8 @@ class _PromoCarouselState extends State<PromoCarousel> {
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!_controller.hasClients || widget.promos.length < 2) return;
-      _controller.animateToPage((_page + 1) % widget.promos.length,
+      if (!_controller.hasClients || widget.slides.length < 2) return;
+      _controller.animateToPage((_page + 1) % widget.slides.length,
           duration: const Duration(milliseconds: 450), curve: Curves.easeOut);
     });
   }
@@ -72,18 +95,15 @@ class _PromoCarouselState extends State<PromoCarousel> {
           PageView(
             controller: _controller,
             onPageChanged: (i) => setState(() => _page = i),
-            children: [
-              for (final p in widget.promos)
-                _Banner(promo: p, kicker: widget.kicker, onView: () => widget.onView(p.category)),
-            ],
+            children: [for (final s in widget.slides) _SlideView(slide: s)],
           ),
-          if (widget.promos.length > 1)
+          if (widget.slides.length > 1)
             Positioned(
               bottom: 10,
               left: 0,
               right: 0,
               child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                for (var i = 0; i < widget.promos.length; i++)
+                for (var i = 0; i < widget.slides.length; i++)
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -102,84 +122,95 @@ class _PromoCarouselState extends State<PromoCarousel> {
   }
 }
 
-class _Banner extends StatelessWidget {
-  const _Banner({required this.promo, required this.kicker, required this.onView});
+class _SlideView extends StatelessWidget {
+  const _SlideView({required this.slide});
 
-  final Promo promo;
-  final String kicker;
-  final VoidCallback onView;
+  final Slide slide;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final c = promo.category;
-    final headline = promo.percent == null ? 'Local deals' : 'Up to ${promo.percent}% Off';
-    final sub = c == null ? 'From shops in your neighbourhood' : 'On ${c.label}';
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [Color(0xFF8E0010), Color(0xFFC4000F), MintadealColors.red],
+    final s = slide;
+    final photo = s.imageUrl != null;
+    return GestureDetector(
+      onTap: s.onTap,
+      child: Stack(fit: StackFit.expand, children: [
+        // Red background, then the admin's photo on top of it.
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [Color(0xFF8E0010), Color(0xFFC4000F), MintadealColors.red]),
+          ),
         ),
-      ),
-      child: Stack(children: [
-        // Artwork: the category's icon on soft circles, on the right.
-        Positioned(
-          right: -30,
-          top: -20,
-          bottom: -20,
-          child: AspectRatio(
-            aspectRatio: 1,
-            child: Container(
-              decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.10)),
-              child: Center(
-                child: Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.16)),
-                  child: Icon(c?.icon ?? Icons.storefront_outlined, size: 52, color: Colors.white),
+        if (photo)
+          Image.network(s.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink())
+        else
+          Positioned(
+            right: -30,
+            top: -20,
+            bottom: -20,
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: Container(
+                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.10)),
+                child: Center(
+                  child: Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.16)),
+                    child: Icon(s.icon ?? Icons.storefront_outlined, size: 52, color: Colors.white),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        // A dark red fade on the left keeps the text readable on any photo.
+        if (photo)
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [
+                const Color(0xFF8E0010).withValues(alpha: 0.95),
+                const Color(0xFFB0000E).withValues(alpha: 0.75),
+                Colors.transparent,
+              ], stops: const [0, 0.45, 0.8]),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 14, 120, 14),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(kicker,
-                maxLines: 1,
-                style: text.labelSmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.9), letterSpacing: 2.2, fontWeight: FontWeight.w700)),
+            if (s.kicker != null)
+              Text(s.kicker!.toUpperCase(),
+                  maxLines: 1,
+                  style: text.labelSmall?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.9), letterSpacing: 2.2, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(headline,
-                  style: text.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+              child: Text(s.title, style: text.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
             ),
-            Text(sub,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: text.bodyMedium?.copyWith(color: Colors.white)),
-            const SizedBox(height: 8),
-            Material(
-              color: MintadealColors.yellow,
-              shape: const StadiumBorder(),
-              child: InkWell(
-                customBorder: const StadiumBorder(),
-                onTap: onView,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text('View Deals',
-                        style: text.labelLarge?.copyWith(color: MintadealColors.charcoal, fontWeight: FontWeight.w800)),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.arrow_forward, size: 16, color: MintadealColors.charcoal),
-                  ]),
+            if (s.subtitle != null)
+              Text(s.subtitle!,
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: text.bodyMedium?.copyWith(color: Colors.white)),
+            if (s.onTap != null) ...[
+              const SizedBox(height: 8),
+              Material(
+                color: MintadealColors.yellow,
+                shape: const StadiumBorder(),
+                child: InkWell(
+                  customBorder: const StadiumBorder(),
+                  onTap: s.onTap,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text('View Deals',
+                          style: text.labelLarge?.copyWith(color: MintadealColors.charcoal, fontWeight: FontWeight.w800)),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.arrow_forward, size: 16, color: MintadealColors.charcoal),
+                    ]),
+                  ),
                 ),
               ),
-            ),
+            ],
           ]),
         ),
       ]),

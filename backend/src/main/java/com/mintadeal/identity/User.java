@@ -31,6 +31,8 @@ public class User {
 
     private String email;
 
+    private String avatarUrl;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_role", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role")
@@ -67,6 +69,14 @@ public class User {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public String getEmail() {

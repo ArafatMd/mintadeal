@@ -33,6 +33,7 @@ public final class VendorDtos {
             String gstNumber,
             @Size(max = 200) String openingHours,
             @Size(max = 500) String logoUrl,
+            @Size(max = 500) String coverUrl,
             @Size(max = 100) String payoutUpiId,
             @Size(max = 30) String payoutAccountNumber,
             @Pattern(regexp = "^$|[A-Z]{4}0[A-Z0-9]{6}", message = "is not a valid IFSC") String payoutIfsc,
@@ -50,7 +51,7 @@ public final class VendorDtos {
             UUID id, UUID ownerUserId, String displayName, String legalName, VendorCategory category,
             VendorType vendorType, VendorStatus status, String phone, String description,
             String addressLine, String area, String city, String pincode, double latitude, double longitude,
-            String gstNumber, String openingHours, String logoUrl,
+            String gstNumber, String openingHours, String logoUrl, String coverUrl,
             String payoutUpiId, String payoutAccountNumber, String payoutIfsc,
             boolean selfDelivery, boolean partnerDelivery, boolean pickup, boolean citywideDelivery,
             BigDecimal deliveryRadiusKm, long deliveryFeeMinor, long minOrderMinor,
@@ -60,7 +61,7 @@ public final class VendorDtos {
             return new VendorDto(v.getId(), v.getOwnerUserId(), v.getDisplayName(), v.getLegalName(),
                     v.getCategory(), v.getVendorType(), v.getStatus(), v.getPhone(), v.getDescription(),
                     v.getAddressLine(), v.getArea(), v.getCity(), v.getPincode(), v.getLatitude(),
-                    v.getLongitude(), v.getGstNumber(), v.getOpeningHours(), v.getLogoUrl(),
+                    v.getLongitude(), v.getGstNumber(), v.getOpeningHours(), v.getLogoUrl(), v.getCoverUrl(),
                     v.getPayoutUpiId(), maskAccount(v.getPayoutAccountNumber()), v.getPayoutIfsc(),
                     v.isSelfDelivery(), v.isPartnerDelivery(), v.isPickup(), v.isCitywideDelivery(),
                     v.getDeliveryRadiusKm(), v.getDeliveryFeeMinor(), v.getMinOrderMinor(),
@@ -79,14 +80,14 @@ public final class VendorDtos {
     public record VendorPublicDto(
             UUID id, String displayName, VendorCategory category, String description, String phone,
             String addressLine, String area, String city, double latitude, double longitude,
-            String openingHours, String logoUrl, boolean selfDelivery, boolean partnerDelivery,
+            String openingHours, String logoUrl, String coverUrl, boolean selfDelivery, boolean partnerDelivery,
             boolean pickup, boolean citywideDelivery, BigDecimal deliveryRadiusKm,
             long deliveryFeeMinor, long minOrderMinor, boolean mintadealOwn) {
 
         public static VendorPublicDto of(Vendor v) {
             return new VendorPublicDto(v.getId(), v.getDisplayName(), v.getCategory(), v.getDescription(),
                     v.getPhone(), v.getAddressLine(), v.getArea(), v.getCity(), v.getLatitude(),
-                    v.getLongitude(), v.getOpeningHours(), v.getLogoUrl(), v.isSelfDelivery(),
+                    v.getLongitude(), v.getOpeningHours(), v.getLogoUrl(), v.getCoverUrl(), v.isSelfDelivery(),
                     v.isPartnerDelivery(), v.isPickup(), v.isCitywideDelivery(), v.getDeliveryRadiusKm(),
                     v.getDeliveryFeeMinor(), v.getMinOrderMinor(), v.getVendorType() == VendorType.INTERNAL);
         }

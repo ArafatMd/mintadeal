@@ -47,7 +47,7 @@ public abstract class ApiTest {
     void cleanDatabase() {
         ProviderStub.INSTANCE.reset();
         jdbc.execute("""
-                TRUNCATE notification, ledger_entry, ledger_journal, payout, payout_batch, commission_rule, vendor_charge, delivery_job, redemption, refund, order_event, order_line, shop_order, checkout, integration_setting,
+                TRUNCATE home_banner, notification, ledger_entry, ledger_journal, payout, payout_batch, commission_rule, vendor_charge, delivery_job, redemption, refund, order_event, order_line, shop_order, checkout, integration_setting,
                          audit_event, vendor_follow, listing_fulfilment_mode, listing, vendor,
                          otp_challenge, user_role, app_user CASCADE""");
     }

@@ -414,6 +414,7 @@ class _PartnerDelivery extends StatelessWidget {
           if (delivery.agentName != null || delivery.agentPhone != null)
             ListTile(
               contentPadding: EdgeInsets.zero,
+              leading: UserAvatar(url: delivery.agentAvatarUrl, name: delivery.agentName),
               title: Text(delivery.agentName ?? 'Your delivery partner'),
               subtitle: const Text('Mintadeal delivery partner'),
               trailing: delivery.agentPhone == null

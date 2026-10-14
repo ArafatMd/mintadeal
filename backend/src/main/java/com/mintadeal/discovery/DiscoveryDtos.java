@@ -34,7 +34,7 @@ public final class DiscoveryDtos {
      *
      * @param tagline         the first line of the shop's description, or null
      * @param bestDiscountPercent the largest discount among its deals, or null when none is discounted
-     * @param coverImageUrl   the image of its best deal that has one, or null
+     * @param coverImageUrl   the shop's cover photo, else the image of its best deal that has one, or null
      */
     public record ShopCard(VendorSummary vendor, String tagline, Double distanceKm, boolean followed,
                            long followers, int dealCount, Integer bestDiscountPercent, String coverImageUrl,

@@ -155,7 +155,13 @@ public class DiscoveryService {
             }
         }
         Map<UUID, String> taglines = new HashMap<>();
-        vendors.findAllById(byShop.keySet()).forEach(v -> taglines.put(v.getId(), tagline(v.getDescription())));
+        Map<UUID, String> covers = new HashMap<>();
+        vendors.findAllById(byShop.keySet()).forEach(v -> {
+            taglines.put(v.getId(), tagline(v.getDescription()));
+            if (v.getCoverUrl() != null) {
+                covers.put(v.getId(), v.getCoverUrl());
+            }
+        });
         Instant now = clock.instant();
         Instant endOfToday = now.atZone(INDIA).toLocalDate().plusDays(1).atStartOfDay(INDIA).toInstant();
         List<ShopCard> cards = new ArrayList<>();
@@ -165,8 +171,8 @@ public class DiscoveryService {
                     .sorted(Comparator.comparing((DiscoveryItem i) -> discount(i)).reversed())
                     .toList();
             Integer bestDiscount = discount(best.getFirst()) > 0 ? discount(best.getFirst()) : null;
-            String cover = best.stream().map(i -> i.listing().imageUrl()).filter(u -> u != null).findFirst()
-                    .orElse(null);
+            String cover = covers.getOrDefault(vendorId, best.stream().map(i -> i.listing().imageUrl())
+                    .filter(u -> u != null).findFirst().orElse(null));
             DiscoveryItem first = deals.getFirst();
             cards.add(new ShopCard(first.vendor(), taglines.get(vendorId), first.distanceKm(), first.followed(),
                     followers.getOrDefault(vendorId, 0L), deals.size(), bestDiscount, cover,

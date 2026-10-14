@@ -241,3 +241,30 @@ enum ShopTag {
 
   static ShopTag parse(Object? s) => ShopTag.values.firstWhere((t) => t.name == s, orElse: () => PICKUP);
 }
+
+/// What tapping a home banner opens.
+enum BannerTarget {
+  NONE('Nothing'),
+  CATEGORY('A category'),
+  SHOP('A shop'),
+  LISTING('A product or offer');
+
+  const BannerTarget(this.label);
+
+  final String label;
+
+  static BannerTarget parse(Object? s) => _byName(values, s, NONE);
+}
+
+/// Which home view shows a banner.
+enum BannerScope {
+  NEARBY('Nearby'),
+  CITYWIDE('All Bengaluru'),
+  BOTH('Both');
+
+  const BannerScope(this.label);
+
+  final String label;
+
+  static BannerScope parse(Object? s) => _byName(values, s, BOTH);
+}

@@ -163,7 +163,6 @@ class _ShopTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(sessionProvider).value?.user;
     final ways = [
       if (shop.selfDelivery) 'Shop delivery',
       if (shop.partnerDelivery) 'Partner delivery',
@@ -174,7 +173,20 @@ class _ShopTab extends ConsumerWidget {
       appBar: AppBar(title: const Text('My shop'), actions: [_SignOutButton()]),
       body: ListView(
         children: [
-          const Padding(padding: EdgeInsets.all(16), child: Center(child: MintadealLogo(height: 56))),
+          if (shop.json['coverUrl'] != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: AspectRatio(
+                  aspectRatio: 2.4,
+                  child: Image.network(shop.json['coverUrl'] as String, fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink()),
+                ),
+              ),
+            )
+          else
+            const Padding(padding: EdgeInsets.all(16), child: Center(child: MintadealLogo(height: 56))),
           ListTile(
             leading: CatalogueImage(url: shop.json['logoUrl'] as String?, category: shop.category, size: 48),
             title: Text(shop.displayName),
@@ -206,7 +218,10 @@ class _ShopTab extends ConsumerWidget {
           if (shop.vendorType == VendorType.INTERNAL)
             const ListTile(leading: Icon(Icons.verified_outlined), title: Text('Mintadeal own catalogue')),
           const Divider(),
-          ListTile(leading: const Icon(Icons.phone_outlined), title: const Text('Signed in as'), subtitle: Text(user?.phone ?? '')),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: ProfilePhotoCard(subtitle: 'Shop owner'),
+          ),
         ],
       ),
     );

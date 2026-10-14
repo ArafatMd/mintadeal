@@ -30,10 +30,19 @@ class StorefrontScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
             children: [
               Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: _Header(store: s, onFollow: () => _toggleFollow(context, ref, s, key)),
-                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  if (s.vendor.coverUrl != null)
+                    AspectRatio(
+                      aspectRatio: 2.4,
+                      child: Image.network(s.vendor.coverUrl!, fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => const SizedBox.shrink()),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: _Header(store: s, onFollow: () => _toggleFollow(context, ref, s, key)),
+                  ),
+                ]),
               ),
               const SizedBox(height: 18),
               Text('Products and offers', style: Theme.of(context).textTheme.titleMedium),

@@ -109,7 +109,7 @@ public class OrderViews {
         return jobs.findFirstByShopOrderIdOrderByRequestedAtDesc(o.getId()).map(j -> {
             User agent = j.getAgentId() == null ? null : users.findById(j.getAgentId()).orElse(null);
             return new DeliveryInfo(j.getStatus().name(), agent == null ? null : agent.getName(),
-                    agent == null ? null : agent.getPhone(),
+                    agent == null ? null : agent.getPhone(), agent == null ? null : agent.getAvatarUrl(),
                     viewer == Viewer.CUSTOMER ? null : j.getCostMinor(),
                     viewer == Viewer.CUSTOMER && j.getStatus().isActive() ? j.getDropCode() : null,
                     j.getRequestedAt(), j.getAssignedAt(), j.getPickedUpAt(), j.getDeliveredAt(), j.getFailureReason());

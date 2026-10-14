@@ -80,6 +80,17 @@ flutter analyze && flutter test              # from each app/package directory
 
 Secrets are encrypted in the database with `SETTINGS_ENCRYPTION_KEY` and never shown again.
 
+## Photos and home banners
+
+- **Shops** add a logo, a wide cover photo (shown on their card and storefront) and a photo per product or offer.
+- **Everyone** can add a profile photo: shop owners under *My shop*, riders under *Profile* (customers see the
+  rider's photo on their order), admins from the photo in the top bar.
+- **Home banners** are managed on the admin website under *Banners*: image, headline, what tapping opens
+  (a category, a shop or a product), which view shows it (Nearby, All Bengaluru or both), dates and order.
+  Without a live banner, the app shows banners made from the best real discounts.
+- Uploads are JPEG, PNG or WebP up to 5 MB, stored in `FILES_DIR` (the `files` volume in production, which the
+  nightly backup includes).
+
 ## Building for release
 
 - Web: `flutter build web --release --no-web-resources-cdn --dart-define=API_BASE_URL=https://api.example.com`

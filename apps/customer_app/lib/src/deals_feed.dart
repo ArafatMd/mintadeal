@@ -8,10 +8,22 @@ import 'all_deals_screen.dart';
 import 'area.dart';
 import 'cart_button.dart';
 import 'category_style.dart';
+import 'listing_detail_screen.dart';
+import 'product_tile.dart';
 import 'promo_banners.dart';
 import 'shop_card_tile.dart';
+import 'storefront_screen.dart';
 
 enum FeedScope { nearby, bangalore }
+
+/// Live admin banners for the Nearby or All Bengaluru view; none when they cannot be loaded.
+final _adminBannersProvider = FutureProvider.autoDispose.family<List<HomeBanner>, bool>((ref, nearby) async {
+  try {
+    return await ref.watch(apiProvider).banners(nearby: nearby);
+  } on Object {
+    return const [];
+  }
+});
 
 /// Header background behind the location, switch and search.
 const _headerColor = Color(0xFFFFF8F0);
@@ -31,7 +43,7 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
   ListingType? _type;
   String _query = '';
   Timer? _debounce;
-  List<Promo> _promos = const [];
+  List<ShopCard> _bestShops = const [];
 
   @override
   void dispose() {
@@ -44,6 +56,25 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
   void _openAll() => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => AllDealsScreen(nearby: _nearby, category: _category, type: _type, query: _query),
       ));
+
+  List<Slide> _slides(List<HomeBanner> admin, GeoPoint at) {
+    final kicker = _nearby ? 'SAVINGS NEAR YOU' : 'ACROSS BENGALURU';
+    if (admin.isEmpty) {
+      return slidesFromShops(_bestShops, kicker: kicker, onView: (c) => setState(() => _category = c));
+    }
+    VoidCallback? open(HomeBanner b) => switch (b.targetType) {
+          BannerTarget.NONE => null,
+          BannerTarget.CATEGORY => () => setState(() => _category = b.targetCategory),
+          BannerTarget.SHOP => () => Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => StorefrontScreen(vendorId: b.targetId!, at: at))),
+          BannerTarget.LISTING => () => Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => ListingDetailScreen(listingId: b.targetId!, at: at))),
+        };
+    return [
+      for (final b in admin)
+        Slide(kicker: b.kicker, title: b.title, subtitle: b.subtitle, imageUrl: b.imageUrl, onTap: open(b)),
+    ];
+  }
 
   Future<void> _openFilters() async {
     final result = await showModalBottomSheet<(VendorCategory?, ListingType?)>(
@@ -60,13 +91,103 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
     }
   }
 
+  /// Shops with deals: the default home view.
+  Widget _shops(MintadealApi api, Area area, bool signedIn, Widget header) {
+    final unfiltered = _category == null && _query.isEmpty;
+    return PagedList<ShopCard>(
+      queryKey: ('shops', _scope, area.name, _category, _query, signedIn),
+      fetch: (page) async {
+        final result = _nearby
+            ? await api.nearbyShops(area.point, category: _category, q: _query, page: page)
+            : await api.bangaloreShops(at: area.point, category: _category, q: _query, page: page);
+        // Generated banners come from the unfiltered first page, so they always reflect real deals.
+        if (page == 0 && unfiltered && mounted) setState(() => _bestShops = result.items);
+        return result;
+      },
+      columns: (width) => width >= 900 ? 4 : (width >= 600 ? 3 : 2),
+      separator: 12,
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+      header: header,
+      itemBuilder: (context, shop) => ShopCardTile(shop: shop, at: area.point),
+      empty: EmptyView(
+        icon: Icons.storefront_outlined,
+        title: _nearby ? 'No deals near ${area.name} yet' : 'No city-wide deals yet',
+        message: _nearby
+            ? 'Try another area or switch to All Bengaluru.'
+            : 'Shops that deliver across Bengaluru and venue offers appear here.',
+      ),
+    );
+  }
+
+  /// Products or venue offers themselves, when the customer picks one of those pills.
+  Widget _deals(MintadealApi api, Area area, bool signedIn, Widget header) {
+    return PagedList<DiscoveryItem>(
+      queryKey: ('deals', _scope, area.name, _category, _type, _query, signedIn),
+      fetch: (page) => _nearby
+          ? api.nearby(area.point, category: _category, type: _type, q: _query, page: page)
+          : api.bangalore(at: area.point, category: _category, type: _type, q: _query, page: page),
+      columns: productColumns,
+      separator: 10,
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+      header: header,
+      itemBuilder: (context, item) => ProductTile(item: item, at: area.point),
+      empty: EmptyView(
+        icon: _type == ListingType.OFFER ? Icons.qr_code_2 : Icons.inventory_2_outlined,
+        title: _type == ListingType.OFFER ? 'No venue offers here yet' : 'No products here yet',
+        message: 'Try another category or area.',
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final area = ref.watch(areaProvider);
     final signedIn = ref.watch(sessionProvider).value != null;
     final api = ref.watch(apiProvider);
     final theme = Theme.of(context);
-    final unfiltered = _category == null && _type == null && _query.isEmpty;
+    final admin = ref.watch(_adminBannersProvider(_nearby)).value ?? const [];
+    final slides = _slides(admin, area.point);
+    final dealsTitle = switch (_type) {
+      null => 'Deals',
+      ListingType.PRODUCT => 'Products',
+      ListingType.OFFER => 'Venue offers',
+    };
+    final header = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _CategoryRail(selected: _category, onSelected: (c) => setState(() => _category = c)),
+      if (slides.isNotEmpty) ...[
+        const SizedBox(height: 4),
+        PromoCarousel(key: ValueKey((_nearby, admin.length)), slides: slides),
+      ],
+      const SizedBox(height: 14),
+      _TypeRow(type: _type, onType: (t) => setState(() => _type = t), onFilters: _openFilters),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(2, 16, 0, 10),
+        child: Row(children: [
+          Expanded(
+            child: Text(
+              [
+                if (_category != null) _category!.label,
+                _nearby ? '$dealsTitle near ${area.name}' : '$dealsTitle across Bengaluru',
+              ].join(' · '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+          ),
+          // Shop cards lead to every single deal; the Products and Venue offers views already show them.
+          if (_type == null)
+            TextButton(
+              onPressed: _openAll,
+              style: TextButton.styleFrom(foregroundColor: theme.colorScheme.primary),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Text('See all', style: TextStyle(fontWeight: FontWeight.w600)),
+                SizedBox(width: 4),
+                Icon(Icons.arrow_forward, size: 18),
+              ]),
+            ),
+        ]),
+      ),
+    ]);
 
     return Scaffold(
       body: Column(children: [
@@ -81,68 +202,7 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
           },
           onFilters: _openFilters,
         ),
-        Expanded(
-          child: PagedList<ShopCard>(
-            queryKey: (_scope, area.name, _category, _type, _query, signedIn),
-            fetch: (page) async {
-              final result = _nearby
-                  ? await api.nearbyShops(area.point, category: _category, type: _type, q: _query, page: page)
-                  : await api.bangaloreShops(at: area.point, category: _category, type: _type, q: _query, page: page);
-              // Banners come from the unfiltered first page, so they always reflect real deals.
-              if (page == 0 && unfiltered && mounted) setState(() => _promos = promosFrom(result.items));
-              return result;
-            },
-            columns: (width) => width >= 900 ? 4 : (width >= 600 ? 3 : 2),
-            separator: 12,
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
-            header: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              _CategoryRail(selected: _category, onSelected: (c) => setState(() => _category = c)),
-              if (_promos.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                PromoCarousel(
-                  promos: _promos,
-                  kicker: _nearby ? 'SAVINGS NEAR YOU' : 'ACROSS BENGALURU',
-                  onView: (c) => setState(() => _category = c),
-                ),
-              ],
-              const SizedBox(height: 14),
-              _TypeRow(type: _type, onType: (t) => setState(() => _type = t), onFilters: _openFilters),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(2, 16, 0, 10),
-                child: Row(children: [
-                  Expanded(
-                    child: Text(
-                      [
-                        if (_category != null) _category!.label,
-                        _nearby ? 'Deals near ${area.name}' : 'Deals across Bengaluru',
-                      ].join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _openAll,
-                    style: TextButton.styleFrom(foregroundColor: theme.colorScheme.primary),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text('See all', style: TextStyle(fontWeight: FontWeight.w600)),
-                      SizedBox(width: 4),
-                      Icon(Icons.arrow_forward, size: 18),
-                    ]),
-                  ),
-                ]),
-              ),
-            ]),
-            itemBuilder: (context, shop) => ShopCardTile(shop: shop, at: area.point),
-            empty: EmptyView(
-              icon: Icons.storefront_outlined,
-              title: _nearby ? 'No deals near ${area.name} yet' : 'No city-wide deals yet',
-              message: _nearby
-                  ? 'Try another area or switch to All Bengaluru.'
-                  : 'Shops that deliver across Bengaluru and venue offers appear here.',
-            ),
-          ),
-        ),
+        Expanded(child: _type == null ? _shops(api, area, signedIn, header) : _deals(api, area, signedIn, header)),
       ]),
     );
   }

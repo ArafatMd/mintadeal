@@ -43,8 +43,9 @@ class MintadealApi {
 
   Future<AppUser> me() async => AppUser.fromJson(await client.get('/api/me') as Json);
 
-  Future<AppUser> updateMe({String? name, String? email}) async =>
-      AppUser.fromJson(await client.patch('/api/me', {'name': name, 'email': email}) as Json);
+  /// Null fields are left unchanged; an empty [avatarUrl] removes the photo.
+  Future<AppUser> updateMe({String? name, String? email, String? avatarUrl}) async => AppUser.fromJson(
+      await client.patch('/api/me', {'name': name, 'email': email, 'avatarUrl': avatarUrl}) as Json);
 
   Future<String> uploadImage(Uint8List bytes, String filename) => client.uploadImage(bytes, filename);
 
@@ -105,6 +106,13 @@ class MintadealApi {
     return PageResult.fromJson(j, ShopCard.fromJson);
   }
 
+  /// Admin banners live now for the home view.
+  Future<List<HomeBanner>> banners({required bool nearby}) async => [
+        for (final b in await client.get('/api/discovery/banners', query: {'scope': nearby ? 'NEARBY' : 'CITYWIDE'})
+            as List)
+          HomeBanner.fromJson(b as Json),
+      ];
+
   Future<DiscoveryItem> listing(String id, {GeoPoint? at}) async => DiscoveryItem.fromJson(
       await client.get('/api/discovery/listings/$id', query: {'lat': at?.lat, 'lng': at?.lng}) as Json);
 
@@ -153,6 +161,18 @@ class MintadealApi {
       Listing.fromJson(await client.put('/api/vendor/listings/$id/stock', {'stock': stock}) as Json);
 
   // --- Admin ---
+
+  // --- Home banners (admin) ---
+
+  Future<List<AdminBanner>> adminBanners() async =>
+      [for (final b in await client.get('/api/admin/banners') as List) AdminBanner.fromJson(b as Json)];
+
+  /// Creates a banner, or updates it when [id] is given.
+  Future<AdminBanner> saveBanner(String? id, Json body) async => AdminBanner.fromJson(
+      (id == null ? await client.post('/api/admin/banners', body) : await client.put('/api/admin/banners/$id', body))
+          as Json);
+
+  Future<void> deleteBanner(String id) => client.delete('/api/admin/banners/$id');
 
   Future<PageResult<Vendor>> adminVendors({VendorStatus? status, int page = 0}) async {
     final j = await client.get('/api/admin/vendors', query: {'status': status?.name, 'page': page}) as Json;

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 
-import 'image_field.dart';
 import 'providers.dart';
 
 /// Create or edit a product or a venue offer.

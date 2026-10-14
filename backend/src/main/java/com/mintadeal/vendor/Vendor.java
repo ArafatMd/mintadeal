@@ -66,6 +66,8 @@ public class Vendor {
 
     private String logoUrl;
 
+    private String coverUrl;
+
     private String payoutUpiId;
 
     private String payoutAccountNumber;
@@ -257,6 +259,14 @@ public class Vendor {
 
     public void setLogoUrl(String logoUrl) {
         this.logoUrl = logoUrl;
+    }
+
+    public String getCoverUrl() {
+        return coverUrl;
+    }
+
+    public void setCoverUrl(String coverUrl) {
+        this.coverUrl = coverUrl;
     }
 
     public String getPayoutUpiId() {

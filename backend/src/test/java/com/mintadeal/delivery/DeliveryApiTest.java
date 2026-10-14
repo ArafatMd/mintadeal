@@ -40,11 +40,13 @@ class DeliveryApiTest extends ApiTest {
         return new Setup(shop, vendorId, customer, orderId);
     }
 
+    private static final String PHOTO = "http://localhost/files/44444444-4444-4444-4444-444444444444.jpg";
+
     private String rider(String phone, String name) throws Exception {
         String admin = login(ADMIN_PHONE);
         call(POST("/api/admin/users/roles"), admin, "{\"phone\":\"" + phone + "\",\"role\":\"DELIVERY_AGENT\",\"granted\":true}");
         String token = login(phone);
-        call(PATCH("/api/me"), token, "{\"name\":\"" + name + "\"}");
+        call(PATCH("/api/me"), token, "{\"name\":\"" + name + "\",\"avatarUrl\":\"" + PHOTO + "\"}");
         return token;
     }
 
@@ -89,7 +91,8 @@ class DeliveryApiTest extends ApiTest {
                 .andExpect(jsonPath("$.status").value("PICKED_UP"));
         call(GET("/api/customer/orders/" + s.orderId()), s.customer(), null)
                 .andExpect(jsonPath("$.status").value("OUT_FOR_DELIVERY"))
-                .andExpect(jsonPath("$.delivery.agentName").value("Ravi"));
+                .andExpect(jsonPath("$.delivery.agentName").value("Ravi"))
+                .andExpect(jsonPath("$.delivery.agentAvatarUrl").value(PHOTO));
         call(GET("/api/vendor/charges"), s.shop(), null)
                 .andExpect(jsonPath("$.outstandingMinor").value(3800))
                 .andExpect(jsonPath("$.charges[0].description").value(org.hamcrest.Matchers.startsWith("Delivery partner for order")));

@@ -29,7 +29,7 @@ public final class OrderDtos {
      * @param costMinor what the shop pays for the partner; shown to the shop and admins only
      * @param dropCode the handover code; shown to the customer only
      */
-    public record DeliveryInfo(String status, String agentName, String agentPhone, Long costMinor, String dropCode,
+    public record DeliveryInfo(String status, String agentName, String agentPhone, String agentAvatarUrl, Long costMinor, String dropCode,
                                Instant requestedAt, Instant assignedAt, Instant pickedUpAt, Instant deliveredAt,
                                String failureReason) {
     }

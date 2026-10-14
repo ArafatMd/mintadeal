@@ -322,6 +322,7 @@ class DeliveryInfo {
       : status = JobStatus.parse(j['status']),
         agentName = j['agentName'] as String?,
         agentPhone = j['agentPhone'] as String?,
+        agentAvatarUrl = j['agentAvatarUrl'] as String?,
         costMinor = (j['costMinor'] as num?)?.toInt(),
         dropCode = j['dropCode'] as String?,
         failureReason = j['failureReason'] as String?,
@@ -330,6 +331,7 @@ class DeliveryInfo {
   final JobStatus status;
   final String? agentName;
   final String? agentPhone;
+  final String? agentAvatarUrl;
 
   /// What the shop pays; only sent to the shop and admins.
   final int? costMinor;

@@ -11,6 +11,7 @@ export 'src/models/finance.dart';
 export 'src/models/models.dart';
 export 'src/models/orders.dart';
 export 'src/ui/async_view.dart';
+export 'src/ui/image_field.dart';
 export 'src/ui/paged_list.dart';
 export 'src/ui/phone_login_screen.dart';
 export 'src/ui/theme.dart';

@@ -28,7 +28,9 @@ public class MeController {
         this.tokens = tokens;
     }
 
-    public record UpdateProfile(@Size(max = 120) String name, @Email @Size(max = 200) String email) {
+    /** Null fields are left as they are; an empty string clears a field. */
+    public record UpdateProfile(@Size(max = 120) String name, @Email @Size(max = 200) String email,
+                                @Size(max = 500) String avatarUrl) {
     }
 
     @GetMapping
@@ -45,6 +47,9 @@ public class MeController {
         }
         if (req.email() != null) {
             user.setEmail(req.email().isBlank() ? null : req.email().trim());
+        }
+        if (req.avatarUrl() != null) {
+            user.setAvatarUrl(req.avatarUrl().isBlank() ? null : req.avatarUrl().trim());
         }
         return UserDto.of(user);
     }

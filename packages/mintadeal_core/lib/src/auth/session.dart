@@ -42,6 +42,15 @@ class SessionController extends AsyncNotifier<Session?> {
     await _save(await ref.read(apiProvider).refreshToken());
   }
 
+  /// Stores profile changes (name, photo) for the signed-in user.
+  Future<void> updateUser(AppUser user) async {
+    final current = state.value;
+    if (current == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userKey, jsonEncode(user.toJson()));
+    state = AsyncData(Session(current.token, user));
+  }
+
   Future<void> signOut() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);

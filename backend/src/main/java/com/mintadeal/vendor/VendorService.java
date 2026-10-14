@@ -126,6 +126,7 @@ public class VendorService {
         v.setGstNumber(blankToNull(r.gstNumber()));
         v.setOpeningHours(blankToNull(r.openingHours()));
         v.setLogoUrl(blankToNull(r.logoUrl()));
+        v.setCoverUrl(blankToNull(r.coverUrl()));
         v.setPayoutUpiId(blankToNull(r.payoutUpiId()));
         // The DTO masks the account number, so an unchanged masked value must not overwrite the real one.
         if (r.payoutAccountNumber() != null && !r.payoutAccountNumber().contains("•")) {

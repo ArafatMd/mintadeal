@@ -46,11 +46,13 @@ Map<String, dynamic> _shop() => {
     };
 
 /// Answers shop and deal requests like the API; records every request.
-MockClient _api(List<Uri> requests) => MockClient((req) async {
+MockClient _api(List<Uri> requests, {List<Map<String, dynamic>> banners = const []}) => MockClient((req) async {
       requests.add(req.url);
-      final body = req.url.path.endsWith('/shops')
-          ? {'items': [_shop()], 'page': 0, 'size': 20, 'total': 1}
-          : {'items': [_item('Aashirvaad Atta 5 kg')], 'page': 0, 'size': 20, 'total': 1};
+      final Object body = req.url.path.endsWith('/banners')
+          ? banners
+          : req.url.path.endsWith('/shops')
+              ? {'items': [_shop()], 'page': 0, 'size': 20, 'total': 1}
+              : {'items': [_item('Aashirvaad Atta 5 kg')], 'page': 0, 'size': 20, 'total': 1};
       return http.Response(jsonEncode(body), 200, headers: {'content-type': 'application/json; charset=utf-8'});
     });
 
@@ -82,8 +84,9 @@ void main() {
     expect(find.text('New deals'), findsOneWidget);
     expect(find.text('Up to 25% Off'), findsOneWidget);
     expect(find.text('On Grocery'), findsOneWidget);
-    expect(requests.first.path, '/api/discovery/nearby/shops');
-    expect(requests.first.queryParameters['lat'], '12.9116');
+    final shops = requests.firstWhere((u) => u.path == '/api/discovery/nearby/shops');
+    expect(shops.queryParameters['lat'], '12.9116');
+    expect(requests.any((u) => u.path == '/api/discovery/banners' && u.queryParameters['scope'] == 'NEARBY'), isTrue);
   });
 
   testWidgets('See all lists every deal, and ADD fills the cart', (tester) async {
@@ -110,13 +113,48 @@ void main() {
     expect(find.text('2 items · ₹538'), findsOneWidget);
   });
 
+  testWidgets('Products shows the products themselves instead of shops', (tester) async {
+    final requests = <Uri>[];
+    await _pumpApp(tester, _api(requests));
+    await tester.tap(find.text('Products'));
+    await tester.pumpAndSettle();
+    final deals = requests.lastWhere((u) => u.path == '/api/discovery/nearby');
+    expect(deals.queryParameters['type'], 'PRODUCT');
+    expect(find.text('Products near HSR Layout'), findsOneWidget);
+    expect(find.text('Aashirvaad Atta 5 kg'), findsOneWidget);
+    expect(find.text('See all'), findsNothing);
+  });
+
+  testWidgets('Admin banners replace the generated ones', (tester) async {
+    await _pumpApp(
+        tester,
+        _api([], banners: [
+          {
+            'id': 'b1',
+            'title': 'Diwali Mega Sale',
+            'subtitle': 'Sweets and gifts',
+            'kicker': 'Festive offers',
+            'imageUrl': 'http://test/files/banner.jpg',
+            'targetType': 'CATEGORY',
+            'targetCategory': 'BAKERY',
+          },
+        ]));
+    expect(find.text('Diwali Mega Sale'), findsOneWidget);
+    expect(find.text('FESTIVE OFFERS'), findsOneWidget);
+    expect(find.text('Up to 25% Off'), findsNothing);
+    await tester.tap(find.text('View Deals'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bakery · Deals near HSR Layout'), findsOneWidget);
+  });
+
   testWidgets('All Bengaluru switches the home screen to city-wide shops', (tester) async {
     final requests = <Uri>[];
     await _pumpApp(tester, _api(requests));
     await tester.tap(find.text('All Bengaluru'));
     await tester.pumpAndSettle();
     expect(find.text('DEALS IN BENGALURU'), findsOneWidget);
-    expect(requests.last.path, '/api/discovery/bangalore/shops');
+    expect(requests.any((u) => u.path == '/api/discovery/bangalore/shops'), isTrue);
+    expect(requests.any((u) => u.queryParameters['scope'] == 'CITYWIDE'), isTrue);
   });
 
   testWidgets('Following asks a signed-out customer to sign in', (tester) async {

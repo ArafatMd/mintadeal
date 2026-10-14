@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 
-import 'image_field.dart';
 import 'providers.dart';
 
 /// Registers a new shop, or edits an existing shop's details and fulfilment settings.
@@ -22,6 +21,7 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
   late VendorCategory _category;
   late Area _area;
   String? _logoUrl;
+  String? _coverUrl;
   bool _selfDelivery = false;
   bool _partnerDelivery = false;
   bool _pickup = true;
@@ -42,6 +42,8 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
     _text = {for (final f in _fields) f: TextEditingController(text: s(f))};
     _text['deliveryFee']!.text = rupeesText((j['deliveryFeeMinor'] as num?)?.toInt());
     _text['minOrder']!.text = rupeesText((j['minOrderMinor'] as num?)?.toInt());
+    // Saved numbers include +91, which the field already shows as its prefix.
+    _text['phone']!.text = _text['phone']!.text.replaceFirst(RegExp(r'^\+91'), '');
     if (widget.existing == null) {
       _text['phone']!.text = ref.read(sessionProvider).value?.user.phone.replaceFirst('+91', '') ?? '';
       _text['deliveryRadiusKm']!.text = '3';
@@ -50,6 +52,7 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
     _area = bengaluruAreas.firstWhere((a) => a.name == j['area'], orElse: () => bengaluruAreas.first);
     if (widget.existing == null) _setAreaCoordinates(_area);
     _logoUrl = j['logoUrl'] as String?;
+    _coverUrl = j['coverUrl'] as String?;
     _selfDelivery = j['selfDelivery'] as bool? ?? false;
     _partnerDelivery = j['partnerDelivery'] as bool? ?? false;
     _pickup = j['pickup'] as bool? ?? true;
@@ -85,6 +88,7 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
       'gstNumber': t('gstNumber')?.toUpperCase(),
       'openingHours': t('openingHours'),
       'logoUrl': _logoUrl,
+      'coverUrl': _coverUrl,
       'payoutUpiId': t('payoutUpiId'),
       'payoutAccountNumber': t('payoutAccountNumber'),
       'payoutIfsc': t('payoutIfsc')?.toUpperCase(),
@@ -176,8 +180,13 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
                 child: Text('Tell customers about your shop. Mintadeal reviews every shop before it goes live.',
                     style: Theme.of(context).textTheme.bodyMedium),
               ),
-            ImageField(url: _logoUrl, category: _category, label: 'Shop photo or logo',
+            ImageField(url: _logoUrl, category: _category, label: 'Shop logo',
+                hint: 'Shown as a small round picture next to your shop name',
                 onChanged: (u) => setState(() => _logoUrl = u)),
+            const SizedBox(height: 16),
+            ImageField(url: _coverUrl, category: _category, label: 'Cover photo', aspectRatio: 2,
+                hint: 'A wide photo of your shop or products. Customers see it at the top of your shop card.',
+                onChanged: (u) => setState(() => _coverUrl = u)),
             _section('Shop'),
             _field('displayName', 'Shop name', validator: _required, caps: TextCapitalization.words),
             Padding(

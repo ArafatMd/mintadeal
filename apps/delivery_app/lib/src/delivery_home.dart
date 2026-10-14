@@ -32,18 +32,19 @@ class _DeliveryHomeState extends ConsumerState<DeliveryHome> {
   Widget build(BuildContext context) {
     final active = ref.watch(myJobsProvider('ACTIVE')).value?.length ?? 0;
     final available = ref.watch(availableJobsProvider).value?.length ?? 0;
+    final user = ref.watch(sessionProvider).value?.user ?? widget.user;
     return Scaffold(
       appBar: AppBar(
         title: Row(children: [
           const MintadealLogo(height: 32),
           const SizedBox(width: 10),
-          Expanded(child: Text(widget.user.name ?? 'Delivery partner', overflow: TextOverflow.ellipsis)),
+          Expanded(child: Text(user.name ?? 'Delivery partner', overflow: TextOverflow.ellipsis)),
         ]),
         actions: [
           IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(sessionProvider.notifier).signOut(),
+            tooltip: 'Profile',
+            onPressed: () => setState(() => _tab = 3),
+            icon: UserAvatar(url: user.avatarUrl, name: user.name, radius: 16),
           ),
         ],
       ),
@@ -51,6 +52,7 @@ class _DeliveryHomeState extends ConsumerState<DeliveryHome> {
         _JobList(scope: 'AVAILABLE'),
         _JobList(scope: 'ACTIVE'),
         _JobList(scope: 'HISTORY'),
+        _ProfileTab(),
       ]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
@@ -66,9 +68,32 @@ class _DeliveryHomeState extends ConsumerState<DeliveryHome> {
             label: 'My jobs',
           ),
           const NavigationDestination(icon: Icon(Icons.history), label: 'History'),
+          const NavigationDestination(
+              icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
+  }
+}
+
+/// The rider's photo, which customers see on their order, and sign out.
+class _ProfileTab extends ConsumerWidget {
+  const _ProfileTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      const ProfilePhotoCard(subtitle: 'Mintadeal delivery partner'),
+      const SizedBox(height: 8),
+      Text('Customers see your photo and name when you are delivering their order.',
+          style: Theme.of(context).textTheme.bodySmall),
+      const SizedBox(height: 24),
+      OutlinedButton.icon(
+        onPressed: () => ref.read(sessionProvider.notifier).signOut(),
+        icon: const Icon(Icons.logout),
+        label: const Text('Sign out'),
+      ),
+    ]);
   }
 }
 

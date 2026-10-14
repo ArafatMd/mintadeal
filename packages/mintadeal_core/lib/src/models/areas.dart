@@ -1,12 +1,16 @@
 import '../api/mintadeal_api.dart';
 
-/// A Bengaluru neighbourhood the customer browses from. GPS location can replace this later.
+/// Where the customer browses from: a Bengaluru neighbourhood, or their own location named after the
+/// nearest neighbourhood ([precise]).
 class Area {
-  const Area(this.name, this.lat, this.lng);
+  const Area(this.name, this.lat, this.lng, {this.precise = false});
 
   final String name;
   final double lat;
   final double lng;
+
+  /// From the device's location rather than the centre of a neighbourhood.
+  final bool precise;
 
   GeoPoint get point => GeoPoint(lat, lng);
 }

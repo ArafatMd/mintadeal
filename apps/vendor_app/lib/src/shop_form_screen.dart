@@ -20,6 +20,12 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
   late final Map<String, TextEditingController> _text;
   late VendorCategory _category;
   late Area _area;
+
+  /// Where the shop is on the map, and whether the owner placed it (GPS or moving the map) rather than
+  /// it being the centre of their area.
+  late GeoPoint _pin;
+  bool _pinned = false;
+  bool _locating = false;
   String? _logoUrl;
   String? _coverUrl;
   bool _selfDelivery = false;
@@ -29,7 +35,7 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
   bool _saving = false;
 
   static const _fields = [
-    'displayName', 'legalName', 'phone', 'description', 'addressLine', 'pincode', 'latitude', 'longitude',
+    'displayName', 'legalName', 'phone', 'description', 'addressLine', 'pincode',
     'gstNumber', 'openingHours', 'payoutUpiId', 'payoutAccountNumber', 'payoutIfsc', 'deliveryRadiusKm',
     'deliveryFee', 'minOrder',
   ];
@@ -50,7 +56,10 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
     }
     _category = widget.existing?.category ?? VendorCategory.GROCERY;
     _area = bengaluruAreas.firstWhere((a) => a.name == j['area'], orElse: () => bengaluruAreas.first);
-    if (widget.existing == null) _setAreaCoordinates(_area);
+    final lat = (j['latitude'] as num?)?.toDouble();
+    final lng = (j['longitude'] as num?)?.toDouble();
+    _pin = lat != null && lng != null ? GeoPoint(lat, lng) : _area.point;
+    _pinned = j['locationPinned'] as bool? ?? false;
     _logoUrl = j['logoUrl'] as String?;
     _coverUrl = j['coverUrl'] as String?;
     _selfDelivery = j['selfDelivery'] as bool? ?? false;
@@ -67,9 +76,25 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
     super.dispose();
   }
 
-  void _setAreaCoordinates(Area a) {
-    _text['latitude']!.text = a.lat.toStringAsFixed(6);
-    _text['longitude']!.text = a.lng.toStringAsFixed(6);
+  Future<void> _useMyLocation() async {
+    setState(() => _locating = true);
+    try {
+      final p = await currentLocation();
+      if (!mounted) return;
+      if (!inBengaluru(p)) {
+        showMessage(context, 'That location is outside Bengaluru. Move the map to your shop instead.');
+        return;
+      }
+      setState(() {
+        _pin = p;
+        _pinned = true;
+        _area = nearestArea(p);
+      });
+    } on LocationProblem catch (e) {
+      if (mounted) showMessage(context, e.message);
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
   }
 
   Map<String, dynamic> _payload() {
@@ -83,8 +108,9 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
       'addressLine': t('addressLine'),
       'area': _area.name,
       'pincode': t('pincode'),
-      'latitude': double.tryParse(_text['latitude']!.text),
-      'longitude': double.tryParse(_text['longitude']!.text),
+      'latitude': _pin.lat,
+      'longitude': _pin.lng,
+      'locationPinned': _pinned,
       'gstNumber': t('gstNumber')?.toUpperCase(),
       'openingHours': t('openingHours'),
       'logoUrl': _logoUrl,
@@ -208,12 +234,14 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: DropdownButtonFormField<Area>(
+                key: ValueKey(_area.name),
                 initialValue: _area,
                 decoration: const InputDecoration(labelText: 'Area'),
                 items: [for (final a in bengaluruAreas) DropdownMenuItem(value: a, child: Text(a.name))],
+                // The pin follows the area until the owner places it themselves.
                 onChanged: (a) => setState(() {
                   _area = a!;
-                  _setAreaCoordinates(a);
+                  if (!_pinned) _pin = a.point;
                 }),
               ),
             ),
@@ -221,15 +249,35 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
             _field('pincode', 'Pincode', keyboard: TextInputType.number,
                 formatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
                 validator: (v) => v != null && RegExp(r'^\d{6}$').hasMatch(v) ? null : '6-digit pincode'),
-            Row(children: [
-              Expanded(child: _field('latitude', 'Latitude', keyboard: const TextInputType.numberWithOptions(decimal: true),
-                  validator: (v) => double.tryParse(v ?? '') == null ? 'Number' : null)),
-              const SizedBox(width: 12),
-              Expanded(child: _field('longitude', 'Longitude', keyboard: const TextInputType.numberWithOptions(decimal: true),
-                  validator: (v) => double.tryParse(v ?? '') == null ? 'Number' : null)),
-            ]),
-            Text('Filled from your area. Fine-tune it to your exact shop location so distances are right.',
-                style: Theme.of(context).textTheme.bodySmall),
+            Text('Shop on the map', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 4),
+            Text(
+              _pinned
+                  ? 'Pinned. Customers see distances from this spot.'
+                  : 'Put the pin on your shop door so customers see the right distance.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: _pinned ? Colors.green.shade700 : Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            PinMap(
+              point: _pin,
+              zoom: _pinned ? 17 : 15,
+              onMoved: (p) => setState(() {
+                // Moving the map by even a little means the owner is placing the pin.
+                if (distanceKm(p, _pin) > 0.005) _pinned = true;
+                _pin = p;
+              }),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _locating ? null : _useMyLocation,
+              icon: _locating
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.my_location),
+              label: const Text("I'm at my shop: use my location"),
+            ),
+            const SizedBox(height: 4),
             _section('How customers get your products',
                 'Venue offers (hotels, salons, events) are always used at your shop with a QR code.'),
             SwitchListTile(

@@ -41,7 +41,7 @@ class FollowingScreen extends ConsumerWidget {
                 message: 'Open a shop and tap Follow.',
               )
             : PagedList<DiscoveryItem>(
-                queryKey: (area.name, shops.length),
+                queryKey: (area.lat, area.lng, shops.length),
                 header: Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: SizedBox(

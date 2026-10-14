@@ -194,6 +194,18 @@ class _ShopTab extends ConsumerWidget {
             subtitle: Text('${shop.category.label} · ${shop.area}'),
             trailing: StatusChip(label: shop.status.label, color: vendorStatusColor(shop.status)),
           ),
+          if (shop.json['locationPinned'] != true)
+            Card(
+              margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              color: Theme.of(context).colorScheme.primaryContainer,
+              child: ListTile(
+                leading: Icon(Icons.add_location_alt_outlined, color: Theme.of(context).colorScheme.onPrimaryContainer),
+                title: const Text('Pin your shop on the map'),
+                subtitle: const Text('Customers now see distances from the centre of your area. Pin your door to show the right one.'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShopFormScreen(existing: shop))),
+              ),
+            ),
           ListTile(
             leading: const Icon(Icons.edit_outlined),
             title: const Text('Shop details and delivery settings'),

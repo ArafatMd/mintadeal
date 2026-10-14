@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'all_deals_screen.dart';
 import 'area.dart';
@@ -44,6 +45,24 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
   String _query = '';
   Timer? _debounce;
   List<ShopCard> _bestShops = const [];
+
+  /// Hides the "use my location" card once the person says no to it.
+  static const _promptKey = 'mintadeal.locationPromptDismissed';
+  bool _promptDismissed = true;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      if (mounted) setState(() => _promptDismissed = p.getBool(_promptKey) ?? false);
+    });
+  }
+
+  Future<void> _dismissPrompt() async {
+    setState(() => _promptDismissed = true);
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(_promptKey, true);
+  }
 
   @override
   void dispose() {
@@ -95,7 +114,7 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
   Widget _shops(MintadealApi api, Area area, bool signedIn, Widget header) {
     final unfiltered = _category == null && _query.isEmpty;
     return PagedList<ShopCard>(
-      queryKey: ('shops', _scope, area.name, _category, _query, signedIn),
+      queryKey: ('shops', _scope, area.lat, area.lng, _category, _query, signedIn),
       fetch: (page) async {
         final result = _nearby
             ? await api.nearbyShops(area.point, category: _category, q: _query, page: page)
@@ -122,7 +141,7 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
   /// Products or venue offers themselves, when the customer picks one of those pills.
   Widget _deals(MintadealApi api, Area area, bool signedIn, Widget header) {
     return PagedList<DiscoveryItem>(
-      queryKey: ('deals', _scope, area.name, _category, _type, _query, signedIn),
+      queryKey: ('deals', _scope, area.lat, area.lng, _category, _type, _query, signedIn),
       fetch: (page) => _nearby
           ? api.nearby(area.point, category: _category, type: _type, q: _query, page: page)
           : api.bangalore(at: area.point, category: _category, type: _type, q: _query, page: page),
@@ -153,6 +172,8 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
       ListingType.OFFER => 'Venue offers',
     };
     final header = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (_nearby && !area.precise && !_promptDismissed)
+        _LocationPrompt(onUse: () => useMyLocation(context, ref), onDismiss: _dismissPrompt),
       _CategoryRail(selected: _category, onSelected: (c) => setState(() => _category = c)),
       if (slides.isNotEmpty) ...[
         const SizedBox(height: 4),
@@ -193,7 +214,7 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
       body: Column(children: [
         _Header(
           scope: _scope,
-          areaName: area.name,
+          areaName: areaLabel(area),
           onArea: () => pickArea(context, ref),
           onScope: (s) => setState(() => _scope = s),
           onSearch: (text) {
@@ -204,6 +225,40 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
         ),
         Expanded(child: _type == null ? _shops(api, area, signedIn, header) : _deals(api, area, signedIn, header)),
       ]),
+    );
+  }
+}
+
+/// Asks once for the device location, so distances are from where the person is rather than an area's centre.
+class _LocationPrompt extends StatelessWidget {
+  const _LocationPrompt({required this.onUse, required this.onDismiss});
+
+  final VoidCallback onUse;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      margin: const EdgeInsets.only(top: 10, bottom: 4),
+      color: scheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 2, 0, 2),
+        child: Row(children: [
+          Icon(Icons.my_location, color: scheme.onPrimaryContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text('See how far shops are from you',
+                style: TextStyle(color: scheme.onPrimaryContainer, fontWeight: FontWeight.w700)),
+          ),
+          TextButton(
+            onPressed: onUse,
+            style: TextButton.styleFrom(foregroundColor: scheme.primary, visualDensity: VisualDensity.compact),
+            child: const Text('Use location', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+          IconButton(tooltip: 'Not now', onPressed: onDismiss, icon: const Icon(Icons.close)),
+        ]),
+      ),
     );
   }
 }

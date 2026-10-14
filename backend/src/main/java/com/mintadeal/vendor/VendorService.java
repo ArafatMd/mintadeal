@@ -123,6 +123,9 @@ public class VendorService {
         v.setPincode(r.pincode());
         v.setLatitude(r.latitude());
         v.setLongitude(r.longitude());
+        if (r.locationPinned() != null) {
+            v.setLocationPinned(r.locationPinned());
+        }
         v.setGstNumber(blankToNull(r.gstNumber()));
         v.setOpeningHours(blankToNull(r.openingHours()));
         v.setLogoUrl(blankToNull(r.logoUrl()));

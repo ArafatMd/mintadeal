@@ -189,7 +189,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   child: InputDecorator(
                     decoration: const InputDecoration(labelText: 'Area'),
                     child: Row(children: [
-                      Expanded(child: Text(ref.watch(areaProvider).name)),
+                      Expanded(child: Text(areaLabel(ref.watch(areaProvider)))),
                       const Icon(Icons.expand_more),
                     ]),
                   ),

@@ -37,7 +37,7 @@ class AccountScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.place_outlined),
             title: const Text('Your area'),
-            subtitle: Text(area.name),
+            subtitle: Text(areaLabel(area)),
             onTap: () => pickArea(context, ref),
           ),
           if (session != null) ...[

@@ -29,6 +29,8 @@ public final class VendorDtos {
             @NotBlank @Pattern(regexp = "\\d{6}", message = "must be a 6-digit pincode") String pincode,
             @NotNull @DecimalMin("6.0") @DecimalMax("37.5") Double latitude,
             @NotNull @DecimalMin("68.0") @DecimalMax("97.5") Double longitude,
+            // True when the owner placed the pin themselves (GPS or map); null leaves it as it was.
+            Boolean locationPinned,
             @Pattern(regexp = "^$|\\d{2}[A-Z]{5}\\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$", message = "is not a valid GSTIN")
             String gstNumber,
             @Size(max = 200) String openingHours,
@@ -51,7 +53,7 @@ public final class VendorDtos {
             UUID id, UUID ownerUserId, String displayName, String legalName, VendorCategory category,
             VendorType vendorType, VendorStatus status, String phone, String description,
             String addressLine, String area, String city, String pincode, double latitude, double longitude,
-            String gstNumber, String openingHours, String logoUrl, String coverUrl,
+            boolean locationPinned, String gstNumber, String openingHours, String logoUrl, String coverUrl,
             String payoutUpiId, String payoutAccountNumber, String payoutIfsc,
             boolean selfDelivery, boolean partnerDelivery, boolean pickup, boolean citywideDelivery,
             BigDecimal deliveryRadiusKm, long deliveryFeeMinor, long minOrderMinor,
@@ -61,7 +63,7 @@ public final class VendorDtos {
             return new VendorDto(v.getId(), v.getOwnerUserId(), v.getDisplayName(), v.getLegalName(),
                     v.getCategory(), v.getVendorType(), v.getStatus(), v.getPhone(), v.getDescription(),
                     v.getAddressLine(), v.getArea(), v.getCity(), v.getPincode(), v.getLatitude(),
-                    v.getLongitude(), v.getGstNumber(), v.getOpeningHours(), v.getLogoUrl(), v.getCoverUrl(),
+                    v.getLongitude(), v.isLocationPinned(), v.getGstNumber(), v.getOpeningHours(), v.getLogoUrl(), v.getCoverUrl(),
                     v.getPayoutUpiId(), maskAccount(v.getPayoutAccountNumber()), v.getPayoutIfsc(),
                     v.isSelfDelivery(), v.isPartnerDelivery(), v.isPickup(), v.isCitywideDelivery(),
                     v.getDeliveryRadiusKm(), v.getDeliveryFeeMinor(), v.getMinOrderMinor(),

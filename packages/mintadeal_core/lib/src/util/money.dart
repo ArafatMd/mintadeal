@@ -24,7 +24,12 @@ String rupeesText(int? minor) {
 }
 
 /// "0.4 km", or "Under 100 m" for shops right next door.
-String formatDistance(double km) => km < 0.1 ? 'Under 100 m' : '${km.toStringAsFixed(km < 10 ? 1 : 0)} km';
+/// Straight-line distance, so marked as approximate: "~350 m", "~1.2 km", "~13 km".
+String formatDistance(double km) {
+  if (km < 0.1) return 'Under 100 m';
+  if (km < 1) return '~${(km * 1000 / 50).round() * 50} m';
+  return '~${km.toStringAsFixed(km < 10 ? 1 : 0)} km';
+}
 
 /// Short relative time for order lists: "just now", "12 min ago", "3 h ago", or a date.
 String timeAgo(DateTime when, {DateTime? now}) {

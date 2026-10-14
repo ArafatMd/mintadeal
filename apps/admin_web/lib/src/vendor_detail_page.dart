@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'dialogs.dart';
 
@@ -111,7 +112,6 @@ class _VendorDetailPageState extends ConsumerState<VendorDetailPage> {
       ('Category', v.category.label),
       ('Phone', v.phone),
       ('Address', '${j['addressLine']}, ${j['area']}, ${j['city']} ${j['pincode']}'),
-      ('Location', '${j['latitude']}, ${j['longitude']}'),
       ('Opening hours', j['openingHours'] as String?),
       ('Description', j['description'] as String?),
       ('Legal name', j['legalName'] as String?),
@@ -164,6 +164,8 @@ class _VendorDetailPageState extends ConsumerState<VendorDetailPage> {
           ),
         ),
         const SizedBox(height: 16),
+        _ShopOnMap(json: j),
+        const SizedBox(height: 16),
         Consumer(builder: (context, ref, _) {
           final charges = ref.watch(_vendorCharges(v.id)).value;
           if (charges == null || charges.charges.isEmpty) return const SizedBox.shrink();
@@ -199,6 +201,68 @@ class _VendorDetailPageState extends ConsumerState<VendorDetailPage> {
             subtitle: Text([date.format(h.createdAt), if (h.detail != null) h.detail!].join(' · ')),
           ),
       ],
+    );
+  }
+}
+
+/// Where the shop says it is, so the team can check the pin before approving.
+class _ShopOnMap extends StatelessWidget {
+  const _ShopOnMap({required this.json});
+
+  final Map<String, dynamic> json;
+
+  @override
+  Widget build(BuildContext context) {
+    final lat = (json['latitude'] as num?)?.toDouble();
+    final lng = (json['longitude'] as num?)?.toDouble();
+    if (lat == null || lng == null) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final pinned = json['locationPinned'] == true;
+    final point = GeoPoint(lat, lng);
+    final area = bengaluruAreas.where((a) => a.name == json['area']).firstOrNull;
+    final fromArea = area == null ? null : distanceKm(point, area.point);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text('Shop on the map', style: theme.textTheme.titleMedium)),
+            TextButton.icon(
+              onPressed: () => launchUrl(Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng'),
+                  mode: LaunchMode.externalApplication),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: const Text('Open in Google Maps'),
+            ),
+          ]),
+          const SizedBox(height: 4),
+          Row(children: [
+            Icon(pinned ? Icons.check_circle : Icons.warning_amber_rounded,
+                size: 18, color: pinned ? Colors.green.shade700 : theme.colorScheme.error),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                pinned
+                    ? 'Pinned by the shop'
+                    : 'Not pinned: this is the centre of ${json['area']}, so distances to this shop are rough',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+          ]),
+          if (pinned && fromArea != null && fromArea > 4)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'The pin is ${formatDistance(fromArea).replaceFirst('~', '')} from the centre of ${json['area']}. '
+                'Check the area or the pin.',
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+              ),
+            ),
+          const SizedBox(height: 12),
+          PinMap(point: point, height: 260, zoom: pinned ? 17 : 14),
+          const SizedBox(height: 6),
+          SelectableText('${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}', style: theme.textTheme.bodySmall),
+        ]),
+      ),
     );
   }
 }

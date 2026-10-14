@@ -13,6 +13,7 @@ export 'src/models/orders.dart';
 export 'src/models/stage6.dart';
 export 'src/ui/async_view.dart';
 export 'src/ui/image_field.dart';
+export 'src/ui/location.dart';
 export 'src/ui/paged_list.dart';
 export 'src/ui/phone_login_screen.dart';
 export 'src/ui/stage6_widgets.dart';

@@ -68,6 +68,8 @@ public class Vendor {
 
     private String coverUrl;
 
+    private boolean locationPinned;
+
     private String payoutUpiId;
 
     private String payoutAccountNumber;
@@ -259,6 +261,14 @@ public class Vendor {
 
     public void setLogoUrl(String logoUrl) {
         this.logoUrl = logoUrl;
+    }
+
+    public boolean isLocationPinned() {
+        return locationPinned;
+    }
+
+    public void setLocationPinned(boolean locationPinned) {
+        this.locationPinned = locationPinned;
     }
 
     public String getCoverUrl() {

@@ -44,6 +44,19 @@ class ImagesAndBannersApiTest extends ApiTest {
     }
 
     @Test
+    void shopRecordsWhetherItsLocationWasPinned() throws Exception {
+        String shop = approvedVendor("9876543210", shopJson("Lakshmi Stores", 12.9121, 77.6446, "\"pickup\":true"));
+        call(GET("/api/vendor/shop"), shop, null).andExpect(jsonPath("$.locationPinned").value(false));
+        call(PUT("/api/vendor/shop"), shop, shopJson("Lakshmi Stores", 12.91234, 77.64478,
+                "\"pickup\":true,\"locationPinned\":true"))
+                .andExpect(jsonPath("$.locationPinned").value(true))
+                .andExpect(jsonPath("$.latitude").value(12.91234));
+        // Saving without the flag (e.g. an older app) keeps it.
+        call(PUT("/api/vendor/shop"), shop, shopJson("Lakshmi Stores", 12.91234, 77.64478, "\"pickup\":true"))
+                .andExpect(jsonPath("$.locationPinned").value(true));
+    }
+
+    @Test
     void anyoneCanSetAndClearTheirProfilePhoto() throws Exception {
         String rider = login("9845000001");
         call(PATCH("/api/me"), rider, "{\"avatarUrl\":\"" + COVER + "\"}")

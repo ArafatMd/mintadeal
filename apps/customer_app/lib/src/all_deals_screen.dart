@@ -30,7 +30,7 @@ class AllDealsScreen extends ConsumerWidget {
         actions: const [CartButton(), SizedBox(width: 4)],
       ),
       body: PagedList<DiscoveryItem>(
-        queryKey: (nearby, area.name, category, type, query, signedIn),
+        queryKey: (nearby, area.lat, area.lng, category, type, query, signedIn),
         fetch: (page) => nearby
             ? api.nearby(area.point, category: category, type: type, q: query, page: page)
             : api.bangalore(at: area.point, category: category, type: type, q: query, page: page),

@@ -56,12 +56,12 @@ MockClient _api(List<Uri> requests, {List<Map<String, dynamic>> banners = const 
       return http.Response(jsonEncode(body), 200, headers: {'content-type': 'application/json; charset=utf-8'});
     });
 
-Future<void> _pumpApp(WidgetTester tester, MockClient client) async {
+Future<void> _pumpApp(WidgetTester tester, MockClient client, {Map<String, Object> prefs = const {}}) async {
   // A phone screen.
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
-  SharedPreferences.setMockInitialValues({});
+  SharedPreferences.setMockInitialValues({'mintadeal.locationPromptDismissed': true, ...prefs});
   await tester.pumpWidget(ProviderScope(
     overrides: [
       apiProvider.overrideWithValue(
@@ -73,6 +73,29 @@ Future<void> _pumpApp(WidgetTester tester, MockClient client) async {
 }
 
 void main() {
+  testWidgets('Home offers to use the location until it is used or dismissed', (tester) async {
+    await _pumpApp(tester, _api([]), prefs: {'mintadeal.locationPromptDismissed': false});
+    expect(find.text('See how far shops are from you'), findsOneWidget);
+    await tester.tap(find.byTooltip('Not now'));
+    await tester.pumpAndSettle();
+    expect(find.text('See how far shops are from you'), findsNothing);
+  });
+
+  testWidgets('A saved location is named after the nearest area and searched from', (tester) async {
+    final requests = <Uri>[];
+    await _pumpApp(tester, _api(requests), prefs: {
+      'mintadeal.area': '{"name":"HSR Layout","lat":12.9141,"lng":77.6389,"precise":true}',
+    });
+    expect(find.text('Near HSR Layout'), findsOneWidget);
+    final shops = requests.lastWhere((u) => u.path == '/api/discovery/nearby/shops');
+    expect(shops.queryParameters['lat'], '12.9141');
+  });
+
+  testWidgets('An area saved by an older version is still restored', (tester) async {
+    await _pumpApp(tester, _api([]), prefs: {'mintadeal.area': 'Indiranagar'});
+    expect(find.text('Indiranagar'), findsOneWidget);
+  });
+
   testWidgets('Home shows nearby shops with their best deal and a banner from it', (tester) async {
     final requests = <Uri>[];
     await _pumpApp(tester, _api(requests));

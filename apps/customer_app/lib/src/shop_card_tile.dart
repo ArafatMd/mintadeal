@@ -119,12 +119,16 @@ class _ShopCardTileState extends ConsumerState<ShopCardTile> {
               ]),
               const SizedBox(height: 10),
               Row(children: [
-                const Icon(Icons.local_offer, size: 15, color: Color(0xFFF2B01E)),
-                const SizedBox(width: 4),
-                Text('${shop.dealCount}',
-                    style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800)),
-                Text(shop.dealCount == 1 ? ' deal' : ' deals',
-                    style: theme.textTheme.labelMedium?.copyWith(color: muted)),
+                if (shop.ratingCount > 0)
+                  RatingBadge(rating: shop.rating, count: shop.ratingCount, compact: true)
+                else ...[
+                  const Icon(Icons.local_offer, size: 15, color: starGold),
+                  const SizedBox(width: 4),
+                  Text('${shop.dealCount}',
+                      style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(shop.dealCount == 1 ? ' deal' : ' deals',
+                      style: theme.textTheme.labelMedium?.copyWith(color: muted)),
+                ],
                 const Spacer(),
                 Flexible(
                   flex: 3,

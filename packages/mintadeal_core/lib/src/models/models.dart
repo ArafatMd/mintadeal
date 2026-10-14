@@ -231,7 +231,9 @@ class ShopCard {
         dealCount = _int(j['dealCount']) ?? 0,
         bestDiscountPercent = _int(j['bestDiscountPercent']),
         coverImageUrl = j['coverImageUrl'] as String?,
-        tag = ShopTag.parse(j['tag']);
+        tag = ShopTag.parse(j['tag']),
+        rating = _double(j['rating']),
+        ratingCount = _int(j['ratingCount']) ?? 0;
 
   final VendorSummary vendor;
   final String? tagline;
@@ -242,6 +244,8 @@ class ShopCard {
   final int? bestDiscountPercent;
   final String? coverImageUrl;
   final ShopTag tag;
+  final double? rating;
+  final int ratingCount;
 }
 
 class Storefront {
@@ -250,13 +254,19 @@ class Storefront {
         distanceKm = _double(j['distanceKm']),
         followed = j['followed'] as bool,
         followers = _int(j['followers']) ?? 0,
-        listings = [for (final i in j['listings'] as List) DiscoveryItem.fromJson(i as Json)];
+        listings = [for (final i in j['listings'] as List) DiscoveryItem.fromJson(i as Json)],
+        rating = _double(j['rating']),
+        ratingCount = _int(j['ratingCount']) ?? 0;
 
   final VendorPublic vendor;
   final double? distanceKm;
   final bool followed;
   final int followers;
   final List<DiscoveryItem> listings;
+
+  /// Average of visible reviews, or null when there are none.
+  final double? rating;
+  final int ratingCount;
 }
 
 class AuditEntry {

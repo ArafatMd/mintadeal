@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'cart_bar.dart';
 import 'cart_button.dart';
 import 'product_tile.dart';
+import 'rate_order.dart';
 import 'providers.dart';
 import 'sign_in.dart';
 
@@ -118,7 +119,26 @@ class _Header extends StatelessWidget {
           ),
         ]),
         const SizedBox(height: 4),
-        Text('${store.followers} ${store.followers == 1 ? 'follower' : 'followers'}', style: theme.textTheme.bodySmall),
+        Row(children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: store.ratingCount == 0
+                ? null
+                : () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => ShopReviewsScreen(
+                          vendorId: v.id, shopName: v.displayName, rating: store.rating, count: store.ratingCount),
+                    )),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                RatingBadge(rating: store.rating, count: store.ratingCount),
+                if (store.ratingCount > 0) const Icon(Icons.chevron_right, size: 18),
+              ]),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text('${store.followers} ${store.followers == 1 ? 'follower' : 'followers'}', style: theme.textTheme.bodySmall),
+        ]),
         if (v.description != null) ...[const SizedBox(height: 12), Text(v.description!)],
         const SizedBox(height: 12),
         _Info(icon: Icons.place_outlined, text: '${v.addressLine}, ${v.area}'),

@@ -80,6 +80,15 @@ flutter analyze && flutter test              # from each app/package directory
 
 Secrets are encrypted in the database with `SETTINGS_ENCRYPTION_KEY` and never shown again.
 
+## Ratings, help and stats
+
+- **Ratings:** customers rate completed orders (1 to 5 stars and a comment) from the order screen. Shop cards and
+  storefronts show the average. Shops read and reply under *My shop → Reviews*; admins hide abusive reviews under
+  *Reviews*.
+- **Help & support:** customers (Account, or "Get help with this order"), shops (*My shop*) and riders (*Profile*)
+  open help requests and see replies there. Admins answer under *Support*.
+- **Stats:** the admin *Overview* is the first page after sign-in; shops see *My shop → Performance*.
+
 ## Photos and home banners
 
 - **Shops** add a logo, a wide cover photo (shown on their card and storefront) and a photo per product or offer.

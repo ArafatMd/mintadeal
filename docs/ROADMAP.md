@@ -10,7 +10,7 @@ working from end to end rather than an API nobody calls.
 | **3. Orders** | Cart, multi-shop checkout into sub-orders, price snapshots, stock reservation, acceptance timeout and auto-cancel, rejection reasons, pay on delivery/pickup, Razorpay Payment Links with signed webhook, refunds, Razorpay and 2Factor settings | Cart, checkout, payment hand-off, my orders, order timeline | Order inbox with alert and badge, accept/reject, ready, out for delivery, complete | | Order search, cancel and refund, Integrations settings | Done |
 | **4. Venue QR and delivery** | Single-use QR for venue offers; delivery jobs; partner booking with cost shown to the shop; cost recovery ledger | QR in order, live delivery status | Scan QR, request delivery partner | Job list, pickup, proof of delivery, status updates | Delivery jobs, assign or cancel riders, shop dues | Done |
 | **5. Payments and payouts** | Commission, double-entry ledger, payout batches (RazorpayX or manual), refund retries, WhatsApp order alerts | UPI prepay, refunds | Earnings and payouts | | Money overview, commission rates, payouts, failed refunds, message log | Done |
-| **6. Pilot hardening** | Ratings, support tickets, rate limiting, monitoring, backups | Ratings, help | Performance stats | | Support queue | |
+| **6. Pilot hardening** | Ratings and reviews, help requests, rate limiting, admin and shop stats, API health check, restore drill | Rate orders, ratings on shops, help | Performance stats, reviews and replies, help | Help | Overview, support queue, review moderation | Done |
 
 ## Decisions taken in Stages 1-2
 
@@ -74,3 +74,23 @@ working from end to end rather than an API nobody calls.
 - **WhatsApp Cloud API with approved templates** for alerts: new orders to the shop, progress (accepted, ready, out
   for delivery, completed, cancelled) to the customer. Sent after the order change is saved, in the background, and
   logged; a failing provider never blocks an order. Push notifications in the apps are not built yet.
+
+## Decisions taken in Stage 6
+
+- **Ratings are per completed order**, 1 to 5 stars with an optional comment, and can be changed for 30 days after
+  completion. Only the order's customer can rate it, so every rating comes from a real purchase. Customers are shown
+  by first name and last initial. Shops can reply; admins can hide abusive reviews, which then leave the average.
+- **Shop cards show the rating once a shop has one**, otherwise the number of live deals.
+- **Help requests, not live chat.** Customers, shops and riders each have their own list (one person can be all
+  three). A request can be about one of their own orders, which staff then see. Status is "Waiting for us",
+  "Replied" or "Closed"; a reply from the person reopens it. At most five open requests per person. There are no
+  push or WhatsApp alerts for replies yet: people see them when they open Help.
+- **Rate limits live in the API, in memory**, which suits one API server. Sign-in requests are limited per IP
+  address (each phone also keeps its OTP limits); orders, uploads, reviews and help requests per person; and an
+  overall cap per person per minute. Signed-in people are counted one by one because many phones share one IP on
+  mobile networks. Payment webhooks are never limited. Limits are in `mintadeal.rate-limit.*` if they need tuning.
+- **Stats are computed from the database on request** (no separate analytics store). Days follow Indian Standard
+  Time. Shop acceptance counts accepted orders against those it accepted, declined or missed.
+- **Monitoring is a health check plus an outside uptime monitor** (see `DEPLOY.md`). The API container's Docker
+  health check calls `/actuator/health`, which also checks the database.
+

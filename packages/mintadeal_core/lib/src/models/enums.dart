@@ -268,3 +268,31 @@ enum BannerScope {
 
   static BannerScope parse(Object? s) => _byName(values, s, BOTH);
 }
+
+enum TicketTopic {
+  ORDER('An order'),
+  PAYMENT_REFUND('Payment or refund'),
+  DELIVERY('Delivery'),
+  ACCOUNT('My account'),
+  SHOP_LISTING('My shop or listings'),
+  PAYOUT('Payouts'),
+  OTHER('Something else');
+
+  const TicketTopic(this.label);
+
+  final String label;
+
+  static TicketTopic parse(Object? s) => _byName(values, s, OTHER);
+}
+
+enum TicketStatus {
+  OPEN('Waiting for us'),
+  ANSWERED('Replied'),
+  CLOSED('Closed');
+
+  const TicketStatus(this.label);
+
+  final String label;
+
+  static TicketStatus parse(Object? s) => _byName(values, s, OPEN);
+}

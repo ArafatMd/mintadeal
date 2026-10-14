@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'payment_screen.dart';
+import 'rate_order.dart';
 import 'sign_in.dart';
 
 /// Bumped after placing or changing an order so the orders list reloads.
@@ -290,7 +291,18 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         const SizedBox(height: 8),
         OutlinedButton(onPressed: _busy ? null : () => _cancel(o), child: const Text('Cancel order')),
       ],
-      const SizedBox(height: 24),
+      if (o.status == OrderStatus.COMPLETED) ...[
+        const SizedBox(height: 16),
+        RateOrderCard(orderId: o.id, shopName: o.shop.name ?? 'the shop'),
+      ],
+      const SizedBox(height: 8),
+      TextButton.icon(
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => NewTicketScreen(as: Role.CUSTOMER, orderId: o.id, orderCode: o.code))),
+        icon: const Icon(Icons.support_agent_outlined),
+        label: const Text('Get help with this order'),
+      ),
+      const SizedBox(height: 16),
       Text('History', style: theme.textTheme.titleMedium),
       for (final e in o.events.reversed)
         ListTile(

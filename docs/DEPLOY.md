@@ -273,6 +273,37 @@ $C run --rm --no-deps -v "$PWD/deploy/backups:/b:ro" --entrypoint sh mintadeal-a
 $C start mintadeal-api
 ```
 
+**Check the backups work (once a month).** This restores the latest dump into a scratch database next to the real
+one, counts orders, and removes it again. Nothing in the live database is touched:
+
+```bash
+cd ~/mintadeal
+C="docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env"
+LATEST=$(ls -t deploy/backups/mintadeal-*.dump | head -1)
+$C exec mintadeal-db createdb -U mintadeal restore_check
+$C exec -T mintadeal-db pg_restore -U mintadeal -d restore_check --no-owner < "$LATEST"
+$C exec mintadeal-db psql -U mintadeal -d restore_check -tAc "select count(*) from shop_order"
+$C exec mintadeal-db dropdb -U mintadeal restore_check
+```
+
+The count should be about the number of orders you expect. If `pg_restore` prints errors, the backup is not usable;
+look at `$C logs mintadeal-backup`.
+
+## Monitoring
+
+- **Health:** `docker ps` shows `(healthy)` next to `mintadeal-mintadeal-api-1` once it answers
+  `/actuator/health`, which also checks the database. `(unhealthy)` means it stopped answering; restart it with
+  `$C restart mintadeal-api` and read `$C logs --tail 100 mintadeal-api`.
+- **Outside monitor (recommended, free):** create an account at an uptime service such as UptimeRobot and add two
+  HTTP monitors every 5 minutes, alerting by email or WhatsApp:
+  - `https://api.mintadeal.com/actuator/health` (keyword `UP`)
+  - `https://mintadeal.com`
+- **Day to day:** the admin website's **Overview** page shows today's orders and value, the last 7 days, and what
+  needs attention: help requests, shops to review, orders waiting for a shop, deliveries without a rider, failed
+  refunds, payouts and messages.
+- **Rate limits:** a client sending too many requests gets "Too many requests"; the API logs each one as
+  `Rate limit hit`. Find them with `$C logs mintadeal-api | grep "Rate limit"`.
+
 ## Troubleshooting
 
 | Problem | Fix |

@@ -313,6 +313,15 @@ class _ShopOrderScreenState extends ConsumerState<ShopOrderScreen> {
           title: Text(e.note ?? e.status.label),
           subtitle: Text(time.format(e.createdAt)),
         ),
+      const SizedBox(height: 8),
+      TextButton.icon(
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => NewTicketScreen(as: Role.VENDOR, orderId: o.id, orderCode: o.code, topics: const [
+                  TicketTopic.ORDER, TicketTopic.PAYMENT_REFUND, TicketTopic.DELIVERY, TicketTopic.OTHER,
+                ]))),
+        icon: const Icon(Icons.support_agent_outlined),
+        label: const Text('Get help with this order'),
+      ),
     ]);
   }
 }

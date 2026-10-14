@@ -4,6 +4,7 @@ import '../models/enums.dart';
 import '../models/finance.dart';
 import '../models/models.dart';
 import '../models/orders.dart';
+import '../models/stage6.dart';
 import 'api_client.dart';
 
 /// A customer's location, used for Nearby and distances.
@@ -125,6 +126,73 @@ class MintadealApi {
   Future<void> follow(String vendorId) => client.put('/api/customer/follows/$vendorId');
 
   Future<void> unfollow(String vendorId) => client.delete('/api/customer/follows/$vendorId');
+
+  // --- Ratings ---
+
+  Future<OrderReview> orderReview(String orderId) async =>
+      OrderReview.fromJson(await client.get('/api/customer/orders/$orderId/review') as Json);
+
+  Future<Review> rateOrder(String orderId, int rating, String? comment) async => Review.fromJson(
+      await client.put('/api/customer/orders/$orderId/review', {'rating': rating, 'comment': comment}) as Json);
+
+  Future<PageResult<Review>> shopReviews(String vendorId, {int page = 0}) async => PageResult.fromJson(
+      await client.get('/api/discovery/vendors/$vendorId/reviews', query: {'page': page}) as Json, Review.fromJson);
+
+  Future<PageResult<Review>> myShopReviews({int page = 0}) async => PageResult.fromJson(
+      await client.get('/api/vendor/reviews', query: {'page': page}) as Json, Review.fromJson);
+
+  Future<Review> replyToReview(String reviewId, String? reply) async =>
+      Review.fromJson(await client.put('/api/vendor/reviews/$reviewId/reply', {'reply': reply}) as Json);
+
+  Future<PageResult<AdminReview>> adminReviews({bool hiddenOnly = false, int page = 0}) async => PageResult.fromJson(
+      await client.get('/api/admin/reviews', query: {'hiddenOnly': hiddenOnly, 'page': page}) as Json,
+      AdminReview.fromJson);
+
+  Future<AdminReview> setReviewHidden(String id, bool hidden, {String? reason}) async => AdminReview.fromJson(
+      (hidden ? await client.post('/api/admin/reviews/$id/hide', {'reason': reason})
+          : await client.post('/api/admin/reviews/$id/show')) as Json);
+
+  // --- Help requests ---
+
+  /// [as] says which of the person's roles is asking: each app keeps its own list.
+  Future<TicketDetail> openTicket(Role as,
+          {required TicketTopic topic, required String subject, required String message, String? orderId}) async =>
+      TicketDetail.fromJson(await client.post('/api/support/tickets?as=${as.name}',
+          {'topic': topic.name, 'subject': subject, 'message': message, 'orderId': orderId}) as Json);
+
+  Future<PageResult<TicketSummary>> myTickets(Role as, {int page = 0}) async => PageResult.fromJson(
+      await client.get('/api/support/tickets', query: {'as': as.name, 'page': page}) as Json, TicketSummary.fromJson);
+
+  Future<TicketDetail> ticket(String id) async =>
+      TicketDetail.fromJson(await client.get('/api/support/tickets/$id') as Json);
+
+  Future<TicketDetail> replyToTicket(String id, String body) async =>
+      TicketDetail.fromJson(await client.post('/api/support/tickets/$id/messages', {'body': body}) as Json);
+
+  Future<TicketDetail> closeTicket(String id) async =>
+      TicketDetail.fromJson(await client.post('/api/support/tickets/$id/close') as Json);
+
+  Future<PageResult<TicketSummary>> supportQueue({TicketStatus? status, int page = 0}) async => PageResult.fromJson(
+      await client.get('/api/admin/support', query: {'status': status?.name, 'page': page}) as Json,
+      TicketSummary.fromJson);
+
+  Future<TicketDetail> staffTicket(String id) async =>
+      TicketDetail.fromJson(await client.get('/api/admin/support/$id') as Json);
+
+  Future<TicketDetail> staffReply(String id, String body) async =>
+      TicketDetail.fromJson(await client.post('/api/admin/support/$id/messages', {'body': body}) as Json);
+
+  Future<TicketDetail> staffSetTicketOpen(String id, bool open) async => TicketDetail.fromJson(
+      await client.post('/api/admin/support/$id/${open ? 'reopen' : 'close'}') as Json);
+
+  // --- Stats ---
+
+  Future<AdminOverview> adminOverview() async =>
+      AdminOverview.fromJson(await client.get('/api/admin/overview') as Json);
+
+  /// [days] is 7, 30 or 90.
+  Future<VendorStats> vendorStats(int days) async =>
+      VendorStats.fromJson(await client.get('/api/vendor/stats', query: {'days': days}) as Json);
 
   // --- Vendor ---
 

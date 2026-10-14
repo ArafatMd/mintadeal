@@ -26,7 +26,7 @@ class AccountScreen extends ConsumerWidget {
             )
           else ...[
             ListTile(
-              leading: const CircleAvatar(child: Icon(Icons.person)),
+              leading: UserAvatar(url: session.user.avatarUrl, name: session.user.name, radius: 20),
               title: Text(session.user.name ?? 'Add your name'),
               subtitle: Text(session.user.phone),
               trailing: const Icon(Icons.edit_outlined),
@@ -41,6 +41,17 @@ class AccountScreen extends ConsumerWidget {
             onTap: () => pickArea(context, ref),
           ),
           if (session != null) ...[
+            ListTile(
+              leading: const Icon(Icons.support_agent_outlined),
+              title: const Text('Help & support'),
+              subtitle: const Text('Questions about an order, a refund or your account'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const HelpScreen(
+                      as: Role.CUSTOMER,
+                      topics: [TicketTopic.ORDER, TicketTopic.PAYMENT_REFUND, TicketTopic.DELIVERY, TicketTopic.ACCOUNT,
+                        TicketTopic.OTHER]))),
+            ),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout),

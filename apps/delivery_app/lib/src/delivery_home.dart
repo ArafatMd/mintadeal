@@ -87,6 +87,19 @@ class _ProfileTab extends ConsumerWidget {
       const SizedBox(height: 8),
       Text('Customers see your photo and name when you are delivering their order.',
           style: Theme.of(context).textTheme.bodySmall),
+      const SizedBox(height: 16),
+      Card(
+        child: ListTile(
+          leading: const Icon(Icons.support_agent_outlined),
+          title: const Text('Help & support'),
+          subtitle: const Text('Problems with a job, payment or the app'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const HelpScreen(as: Role.DELIVERY_AGENT, topics: [
+                    TicketTopic.DELIVERY, TicketTopic.ORDER, TicketTopic.PAYOUT, TicketTopic.ACCOUNT, TicketTopic.OTHER,
+                  ]))),
+        ),
+      ),
       const SizedBox(height: 24),
       OutlinedButton.icon(
         onPressed: () => ref.read(sessionProvider.notifier).signOut(),

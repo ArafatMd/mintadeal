@@ -7,6 +7,7 @@ import 'earnings_tab.dart';
 import 'listings_tab.dart';
 import 'scan_screen.dart';
 import 'order_alerts.dart';
+import 'performance_screens.dart';
 import 'orders_tab.dart';
 import 'providers.dart';
 import 'shop_form_screen.dart';
@@ -209,6 +210,20 @@ class _ShopTab extends ConsumerWidget {
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChargesScreen())),
             ),
           ListTile(
+            leading: const Icon(Icons.insights_outlined),
+            title: const Text('Performance'),
+            subtitle: const Text('Sales, orders, how fast you accept, best sellers'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PerformanceScreen())),
+          ),
+          ListTile(
+            leading: const Icon(Icons.star_outline_rounded),
+            title: const Text('Reviews'),
+            subtitle: const Text('What customers say, and your replies'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ShopReviewsTab())),
+          ),
+          ListTile(
             leading: const Icon(Icons.qr_code_scanner),
             title: const Text('Scan an offer QR'),
             subtitle: const Text('For hotel, restaurant, service and event offers'),
@@ -217,6 +232,17 @@ class _ShopTab extends ConsumerWidget {
           ),
           if (shop.vendorType == VendorType.INTERNAL)
             const ListTile(leading: Icon(Icons.verified_outlined), title: Text('Mintadeal own catalogue')),
+          ListTile(
+            leading: const Icon(Icons.support_agent_outlined),
+            title: const Text('Help & support'),
+            subtitle: const Text('Questions about orders, payouts or your listings'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const HelpScreen(as: Role.VENDOR, topics: [
+                      TicketTopic.ORDER, TicketTopic.PAYOUT, TicketTopic.SHOP_LISTING, TicketTopic.DELIVERY,
+                      TicketTopic.ACCOUNT, TicketTopic.OTHER,
+                    ]))),
+          ),
           const Divider(),
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 4, 16, 16),

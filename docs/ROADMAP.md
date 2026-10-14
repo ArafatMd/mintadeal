@@ -18,7 +18,7 @@ working from end to end rather than an API nobody calls.
 - **One modular backend**, no microservices, as the architecture document recommends for the MVP.
 - **Phone OTP sign-in for everyone.** SMS sending is behind `SmsSender`; until a provider is connected the
   code is only logged (never the code itself) and the dev profile fixes it to 123456.
-- **Location is a Bengaluru area picker** with coordinates; GPS can replace it without API changes.
+- **Location** comes from the phone's GPS when the customer allows it, else a Bengaluru area. Shops pin their door on an OpenStreetMap map. Distances are straight-line ("~1.3 km") unless the optional OSRM routing server is running ([ROUTING.md](ROUTING.md)), which adds road distance and time. Which shops appear, and delivery radius checks, stay on straight-line distance.
 - **Delivery partners are users with the DELIVERY_AGENT role**, added by an admin. That covers both
   Mintadeal riders and a partner's riders signing in to the delivery app.
 - **Money is stored in paise** (integer minor units) everywhere.

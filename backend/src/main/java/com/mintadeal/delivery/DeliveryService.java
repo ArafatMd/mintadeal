@@ -34,6 +34,7 @@ import com.mintadeal.order.OrderStatus;
 import com.mintadeal.order.PaymentStatus;
 import com.mintadeal.order.ShopOrder;
 import com.mintadeal.order.ShopOrderRepository;
+import com.mintadeal.routing.RoadRouter;
 import com.mintadeal.vendor.Vendor;
 import com.mintadeal.vendor.VendorRepository;
 
@@ -58,13 +59,15 @@ public class DeliveryService {
     private final DeliveryProperties props;
     private final Bookkeeping bookkeeping;
     private final LedgerService ledger;
+    private final RoadRouter roads;
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
     public DeliveryService(DeliveryJobRepository jobs, VendorChargeRepository charges, ShopOrderRepository orders,
                            CheckoutRepository checkouts, VendorRepository vendors, UserRepository users,
                            OrderService orderService, DeliveryProperties props, Bookkeeping bookkeeping,
-                           LedgerService ledger, Clock clock) {
+                           LedgerService ledger, RoadRouter roads, Clock clock) {
+        this.roads = roads;
         this.bookkeeping = bookkeeping;
         this.ledger = ledger;
         this.jobs = jobs;
@@ -246,11 +249,15 @@ public class DeliveryService {
         return props.baseFeeMinor() + props.perKmMinor() * Math.max(1, wholeKm);
     }
 
-    private static BigDecimal distance(Vendor v, Checkout c) {
+    /** How far the rider goes: by road when routing is on, else in a straight line. */
+    private BigDecimal distance(Vendor v, Checkout c) {
         if (c.getAddressLatitude() == null || c.getAddressLongitude() == null) {
             throw ApiException.conflict("no_address", "This order has no delivery address");
         }
-        double km = Geo.distanceKm(v.getLatitude(), v.getLongitude(), c.getAddressLatitude(), c.getAddressLongitude());
+        double km = roads.between(v.getLatitude(), v.getLongitude(), c.getAddressLatitude(), c.getAddressLongitude())
+                .map(RoadRouter.Road::km)
+                .orElseGet(() -> Geo.distanceKm(v.getLatitude(), v.getLongitude(), c.getAddressLatitude(),
+                        c.getAddressLongitude()));
         return BigDecimal.valueOf(km).setScale(2, RoundingMode.HALF_UP);
     }
 

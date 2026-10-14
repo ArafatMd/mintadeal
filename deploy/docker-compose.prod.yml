@@ -42,6 +42,8 @@ services:
       PUBLIC_BASE_URL: https://api.${DOMAIN:?set DOMAIN}
       CORS_ORIGINS: https://app.${DOMAIN},https://shop.${DOMAIN},https://admin.${DOMAIN},https://rider.${DOMAIN}
       TZ: Asia/Kolkata
+      # Road distances; empty until the optional mintadeal-osrm service is set up (docs/ROUTING.md).
+      OSRM_URL: ${OSRM_URL:-}
     volumes:
       - files:/data/files
     # The image has no curl, so bash opens the connection itself. Unhealthy containers show in `docker ps`.
@@ -67,6 +69,18 @@ services:
     mem_limit: 64m
     networks:
       edge:
+
+  # Optional road distances for Bengaluru. Only starts with `--profile routing`, after deploy/prepare-osrm.sh has
+  # built the map data into deploy/osrm. See docs/ROUTING.md.
+  mintadeal-osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    profiles: [routing]
+    restart: unless-stopped
+    command: ["osrm-routed", "--algorithm", "mld", "--max-table-size", "200", "/data/bengaluru.osrm"]
+    volumes:
+      - ./osrm:/data:ro
+    mem_limit: 768m
+    networks: [internal]
 
   # Nightly database dump and uploaded-image archive into deploy/backups, kept for 14 days.
   mintadeal-backup:

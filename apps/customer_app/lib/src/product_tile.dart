@@ -73,7 +73,7 @@ class ProductTile extends StatelessWidget {
               ),
               if (showVendor)
                 Text(
-                  [item.vendor.displayName, if (item.distanceKm != null) formatDistance(item.distanceKm!)].join(' · '),
+                  [item.vendor.displayName, ?item.distanceText].join(' · '),
                   style: theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

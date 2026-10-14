@@ -214,7 +214,8 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
       body: Column(children: [
         _Header(
           scope: _scope,
-          areaName: areaLabel(area),
+          areaName: area.name,
+          precise: area.precise,
           onArea: () => pickArea(context, ref),
           onScope: (s) => setState(() => _scope = s),
           onSearch: (text) {
@@ -267,6 +268,7 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.scope,
     required this.areaName,
+    required this.precise,
     required this.onArea,
     required this.onScope,
     required this.onSearch,
@@ -275,6 +277,9 @@ class _Header extends StatelessWidget {
 
   final FeedScope scope;
   final String areaName;
+
+  /// From the device location: the kicker says "near you" and the name is the nearest area.
+  final bool precise;
   final VoidCallback onArea;
   final ValueChanged<FeedScope> onScope;
   final ValueChanged<String> onSearch;
@@ -290,11 +295,11 @@ class _Header extends StatelessWidget {
       onTap: onArea,
       borderRadius: BorderRadius.circular(8),
       child: Row(children: [
-        Icon(Icons.location_on, color: theme.colorScheme.primary, size: 24),
+        Icon(precise ? Icons.my_location : Icons.location_on, color: theme.colorScheme.primary, size: 24),
         const SizedBox(width: 4),
         Flexible(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(nearby ? 'NEARBY DEALS' : 'DEALS IN BENGALURU',
+            Text(nearby ? (precise ? 'DEALS NEAR YOU' : 'NEARBY DEALS') : 'DEALS IN BENGALURU',
                 maxLines: 1,
                 style: theme.textTheme.labelSmall?.copyWith(
                     color: ink.withValues(alpha: 0.7), letterSpacing: 1.4, fontWeight: FontWeight.w600)),

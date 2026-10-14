@@ -86,7 +86,8 @@ void main() {
     await _pumpApp(tester, _api(requests), prefs: {
       'mintadeal.area': '{"name":"HSR Layout","lat":12.9141,"lng":77.6389,"precise":true}',
     });
-    expect(find.text('Near HSR Layout'), findsOneWidget);
+    expect(find.text('DEALS NEAR YOU'), findsOneWidget);
+    expect(find.text('HSR Layout'), findsWidgets);
     final shops = requests.lastWhere((u) => u.path == '/api/discovery/nearby/shops');
     expect(shops.queryParameters['lat'], '12.9141');
   });

@@ -248,6 +248,11 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env up -d --
 If the apps changed, run `deploy/build-web.sh` again from your computer. The website needs only the `git pull`. Database migrations run on API start.
 The API is unavailable for about 30 seconds while it restarts.
 
+## Road distances (optional)
+
+Distances are approximate straight-line ones until you set up the routing server. It adds road distance and
+time ("1.8 km · 10 min") and prices partner deliveries by road. See [ROUTING.md](ROUTING.md).
+
 ## Backups
 
 - **Schedule:** every night at 03:00 IST the `mintadeal-backup` container writes two files to

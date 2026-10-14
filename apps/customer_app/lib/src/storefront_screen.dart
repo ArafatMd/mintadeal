@@ -98,7 +98,7 @@ class _Header extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(v.displayName, style: theme.textTheme.titleLarge),
-              Text([v.category.label, v.area, if (store.distanceKm != null) formatDistance(store.distanceKm!)].join(' · '),
+              Text([v.category.label, v.area, ?store.distanceText].join(' · '),
                   style: theme.textTheme.bodySmall),
               if (v.mintadealOwn) Text('Sold by Mintadeal', style: theme.textTheme.labelSmall),
             ]),

@@ -71,7 +71,7 @@ class _Detail extends StatelessWidget {
             title: Text(item.vendor.displayName),
             subtitle: Text([
               item.vendor.area,
-              if (item.distanceKm != null) '${formatDistance(item.distanceKm!)} away',
+              if (item.distanceText != null) '${item.distanceText} away',
               if (item.vendor.mintadealOwn) 'Sold by Mintadeal',
             ].join(' · ')),
             trailing: const Icon(Icons.chevron_right),

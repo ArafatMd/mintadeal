@@ -39,3 +39,12 @@ String timeAgo(DateTime when, {DateTime? now}) {
   if (diff.inHours < 24) return '${diff.inHours} h ago';
   return DateFormat('d MMM, h:mm a').format(when);
 }
+
+/// A trip by road ("1.8 km · 10 min") when the server knows one, else the approximate straight-line distance.
+String? formatTrip(double? straightKm, double? roadKm, int? roadMinutes) {
+  if (roadKm != null && roadMinutes != null) {
+    final km = roadKm < 1 ? '${(roadKm * 1000 / 50).round() * 50} m' : '${roadKm.toStringAsFixed(roadKm < 10 ? 1 : 0)} km';
+    return '$km · $roadMinutes min';
+  }
+  return straightKm == null ? null : formatDistance(straightKm);
+}

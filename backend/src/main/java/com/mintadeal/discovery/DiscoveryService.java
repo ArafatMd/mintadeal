@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,9 @@ import com.mintadeal.discovery.DiscoveryDtos.ShopCard;
 import com.mintadeal.discovery.DiscoveryDtos.ShopTag;
 import com.mintadeal.review.ReviewDtos.RatingSummary;
 import com.mintadeal.review.ReviewService;
+import com.mintadeal.routing.RoadRouter;
+import com.mintadeal.routing.RoadRouter.Point;
+import com.mintadeal.routing.RoadRouter.Road;
 import com.mintadeal.discovery.DiscoveryDtos.Storefront;
 import com.mintadeal.discovery.DiscoveryDtos.VendorSummary;
 import com.mintadeal.vendor.Vendor;
@@ -73,11 +78,13 @@ public class DiscoveryService {
     private final VendorFollowRepository follows;
     private final DiscoveryProperties props;
     private final ReviewService reviews;
+    private final RoadRouter roads;
     private final Clock clock;
 
     public DiscoveryService(DiscoveryRepository repo, VendorRepository vendors, ListingRepository listings,
                             VendorFollowRepository follows, DiscoveryProperties props, ReviewService reviews,
-                            Clock clock) {
+                            RoadRouter roads, Clock clock) {
+        this.roads = roads;
         this.repo = repo;
         this.vendors = vendors;
         this.listings = listings;
@@ -90,27 +97,51 @@ public class DiscoveryService {
     @Transactional(readOnly = true)
     public PageResponse<DiscoveryItem> nearby(double lat, double lng, Filter filter, UUID customerId,
                                               int page, int size) {
-        return paginate(nearbyItems(lat, lng, filter, customerId), page, size);
+        return withRoads(paginate(nearbyItems(lat, lng, filter, customerId), page, size), lat, lng,
+                i -> i.vendor().id(), DiscoveryItem::withRoad);
     }
 
     @Transactional(readOnly = true)
     public PageResponse<DiscoveryItem> citywide(Double lat, Double lng, Filter filter, UUID customerId,
                                                 int page, int size) {
-        return paginate(citywideItems(lat, lng, filter, customerId), page, size);
+        return withRoads(paginate(citywideItems(lat, lng, filter, customerId), page, size), lat, lng,
+                i -> i.vendor().id(), DiscoveryItem::withRoad);
     }
 
     /** Nearby deals grouped into shops, nearest (and followed) first. */
     @Transactional(readOnly = true)
     public PageResponse<ShopCard> nearbyShops(double lat, double lng, Filter filter, UUID customerId,
                                               int page, int size) {
-        return paginate(shops(nearbyItems(lat, lng, filter, customerId)), page, size);
+        return withRoads(paginate(shops(nearbyItems(lat, lng, filter, customerId)), page, size), lat, lng,
+                c -> c.vendor().id(), ShopCard::withRoad);
     }
 
     /** City-wide deals grouped into shops, most recently updated first. */
     @Transactional(readOnly = true)
     public PageResponse<ShopCard> citywideShops(Double lat, Double lng, Filter filter, UUID customerId,
                                                 int page, int size) {
-        return paginate(shops(citywideItems(lat, lng, filter, customerId)), page, size);
+        return withRoads(paginate(shops(citywideItems(lat, lng, filter, customerId)), page, size), lat, lng,
+                c -> c.vendor().id(), ShopCard::withRoad);
+    }
+
+    /**
+     * Adds road distance and time to one page of results, when road routing is on. Only the page is routed, so a
+     * long list costs one small OSRM call. Order and filtering stay on straight-line distance.
+     */
+    private <T> PageResponse<T> withRoads(PageResponse<T> page, Double lat, Double lng, Function<T, UUID> vendorOf,
+                                          BiFunction<T, Road, T> apply) {
+        if (lat == null || lng == null || !roads.enabled() || page.items().isEmpty()) {
+            return page;
+        }
+        Map<UUID, Point> shopsOnPage = new HashMap<>();
+        vendors.findAllById(page.items().stream().map(vendorOf).distinct().toList())
+                .forEach(v -> shopsOnPage.put(v.getId(), new Point(v.getLatitude(), v.getLongitude())));
+        Map<UUID, Road> found = roads.fromOrigin(lat, lng, shopsOnPage);
+        if (found.isEmpty()) {
+            return page;
+        }
+        List<T> items = page.items().stream().map(i -> apply.apply(i, found.get(vendorOf.apply(i)))).toList();
+        return new PageResponse<>(items, page.page(), page.size(), page.total());
     }
 
     private List<DiscoveryItem> nearbyItems(double lat, double lng, Filter filter, UUID customerId) {
@@ -183,7 +214,8 @@ public class DiscoveryService {
             RatingSummary rating = ratings.getOrDefault(vendorId, RatingSummary.NONE);
             cards.add(new ShopCard(first.vendor(), taglines.get(vendorId), first.distanceKm(), first.followed(),
                     followers.getOrDefault(vendorId, 0L), deals.size(), bestDiscount, cover,
-                    tag(deals, now, endOfToday), rating.count() == 0 ? null : rating.average(), rating.count()));
+                    tag(deals, now, endOfToday), rating.count() == 0 ? null : rating.average(), rating.count(),
+                    null, null));
         });
         return cards;
     }
@@ -230,7 +262,10 @@ public class DiscoveryService {
                 .findFirst()
                 .orElseThrow(() -> ApiException.notFound("Listing"));
         Set<UUID> followed = followedBy(customerId);
-        return lat != null && lng != null ? toItem(c, lat, lng, followed) : toCitywideItem(c, null, null, followed);
+        if (lat == null || lng == null) {
+            return toCitywideItem(c, null, null, followed);
+        }
+        return toItem(c, lat, lng, followed).withRoad(road(lat, lng, c.vendor()));
     }
 
     @Transactional(readOnly = true)
@@ -249,8 +284,17 @@ public class DiscoveryService {
         Double distance = lat != null && lng != null ? round(Geo.distanceKm(lat, lng,
                 vendor.getLatitude(), vendor.getLongitude())) : null;
         RatingSummary rating = reviews.summary(vendorId);
+        Road road = lat != null && lng != null ? road(lat, lng, vendor) : null;
+        if (road != null) {
+            items = items.stream().map(i -> i.withRoad(road)).toList();
+        }
         return new Storefront(VendorPublicDto.of(vendor), distance, followed.contains(vendorId),
-                follows.countFollowers(vendorId), items, rating.count() == 0 ? null : rating.average(), rating.count());
+                follows.countFollowers(vendorId), items, rating.count() == 0 ? null : rating.average(), rating.count(),
+                road == null ? null : road.km(), road == null ? null : road.minutes());
+    }
+
+    private Road road(double lat, double lng, Vendor v) {
+        return roads.between(lat, lng, v.getLatitude(), v.getLongitude()).orElse(null);
     }
 
     private DiscoveryItem toItem(Candidate c, double lat, double lng, Set<UUID> followed) {
@@ -262,7 +306,7 @@ public class DiscoveryService {
                 && distance <= props.nearbyRadiusKm();
         boolean venue = l.getFulfilmentModes().contains(FulfilmentMode.VENUE_QR) && distance <= props.nearbyRadiusKm();
         return new DiscoveryItem(ListingDto.of(l), summary(v), round(distance), deliverable, pickup, venue,
-                deliverable ? v.getDeliveryFeeMinor() : null, followed.contains(v.getId()));
+                deliverable ? v.getDeliveryFeeMinor() : null, followed.contains(v.getId()), null, null);
     }
 
     /** City-wide view: a venue offer or city-wide delivery shop is available to anyone in Bengaluru. */
@@ -275,7 +319,7 @@ public class DiscoveryService {
                 ? round(Geo.distanceKm(lat, lng, v.getLatitude(), v.getLongitude())) : null;
         boolean pickup = l.getFulfilmentModes().contains(FulfilmentMode.PICKUP) && v.isPickup();
         return new DiscoveryItem(ListingDto.of(l), summary(v), distance, deliverable, pickup, venue,
-                deliverable ? v.getDeliveryFeeMinor() : null, followed.contains(v.getId()));
+                deliverable ? v.getDeliveryFeeMinor() : null, followed.contains(v.getId()), null, null);
     }
 
     private static boolean canDeliver(Listing l, Vendor v) {

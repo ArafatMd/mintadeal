@@ -107,7 +107,7 @@ class _ShopCardTileState extends ConsumerState<ShopCardTile> {
                       const SizedBox(width: 2),
                       Flexible(
                         child: Text(
-                          [v.area, if (shop.distanceKm != null) formatDistance(shop.distanceKm!)].join(' · '),
+                          [v.area, ?shop.distanceText].join(' · '),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.labelSmall?.copyWith(color: muted),

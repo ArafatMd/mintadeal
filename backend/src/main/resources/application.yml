@@ -62,6 +62,13 @@ mintadeal:
   discovery:
     nearby-radius-km: 5
     max-search-radius-km: 25
+  routing:
+    # Road distances from a self-hosted OSRM server (see docs/ROUTING.md). Empty: straight-line distances.
+    osrm-url: ${OSRM_URL:}
+    timeout: 1500ms
+    # OSRM's times assume empty roads; this allows for Bengaluru traffic.
+    duration-factor: 1.6
+    cache-ttl: 6h
   files:
     directory: ${FILES_DIR:./storage/files}
     public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}

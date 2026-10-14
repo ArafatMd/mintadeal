@@ -17,4 +17,11 @@ void main() {
     expect(inBengaluru(const GeoPoint(13.0827, 80.2707)), isFalse); // Chennai
     expect(distanceKm(const GeoPoint(12.9116, 77.6474), const GeoPoint(12.9352, 77.6245)), closeTo(3.6, 0.2));
   });
+
+  test('a road trip shows distance and time, without the approximate mark', () {
+    expect(formatTrip(1.3, 1.8, 10), '1.8 km · 10 min');
+    expect(formatTrip(0.3, 0.45, 3), '450 m · 3 min');
+    expect(formatTrip(1.3, null, null), '~1.3 km');
+    expect(formatTrip(null, null, null), isNull);
+  });
 }

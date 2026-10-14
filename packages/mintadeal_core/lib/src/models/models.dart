@@ -1,4 +1,5 @@
 import 'enums.dart';
+import '../util/money.dart';
 
 typedef Json = Map<String, dynamic>;
 
@@ -208,7 +209,9 @@ class DiscoveryItem {
         pickupAvailable = j['pickupAvailable'] as bool,
         venueOffer = j['venueOffer'] as bool,
         deliveryFeeMinor = _int(j['deliveryFeeMinor']),
-        followed = j['followed'] as bool;
+        followed = j['followed'] as bool,
+        roadKm = _double(j['roadKm']),
+        roadMinutes = _int(j['roadMinutes']);
 
   final Listing listing;
   final VendorSummary vendor;
@@ -218,6 +221,13 @@ class DiscoveryItem {
   final bool venueOffer;
   final int? deliveryFeeMinor;
   final bool followed;
+
+  /// By road, when the server has road routing switched on.
+  final double? roadKm;
+  final int? roadMinutes;
+
+  /// "1.8 km · 10 min" by road, else "~1.3 km"; null without a location.
+  String? get distanceText => formatTrip(distanceKm, roadKm, roadMinutes);
 }
 
 /// A shop on the home screen with a summary of its deals that this customer can get.
@@ -233,7 +243,9 @@ class ShopCard {
         coverImageUrl = j['coverImageUrl'] as String?,
         tag = ShopTag.parse(j['tag']),
         rating = _double(j['rating']),
-        ratingCount = _int(j['ratingCount']) ?? 0;
+        ratingCount = _int(j['ratingCount']) ?? 0,
+        roadKm = _double(j['roadKm']),
+        roadMinutes = _int(j['roadMinutes']);
 
   final VendorSummary vendor;
   final String? tagline;
@@ -246,6 +258,10 @@ class ShopCard {
   final ShopTag tag;
   final double? rating;
   final int ratingCount;
+  final double? roadKm;
+  final int? roadMinutes;
+
+  String? get distanceText => formatTrip(distanceKm, roadKm, roadMinutes);
 }
 
 class Storefront {
@@ -256,7 +272,9 @@ class Storefront {
         followers = _int(j['followers']) ?? 0,
         listings = [for (final i in j['listings'] as List) DiscoveryItem.fromJson(i as Json)],
         rating = _double(j['rating']),
-        ratingCount = _int(j['ratingCount']) ?? 0;
+        ratingCount = _int(j['ratingCount']) ?? 0,
+        roadKm = _double(j['roadKm']),
+        roadMinutes = _int(j['roadMinutes']);
 
   final VendorPublic vendor;
   final double? distanceKm;
@@ -267,6 +285,10 @@ class Storefront {
   /// Average of visible reviews, or null when there are none.
   final double? rating;
   final int ratingCount;
+  final double? roadKm;
+  final int? roadMinutes;
+
+  String? get distanceText => formatTrip(distanceKm, roadKm, roadMinutes);
 }
 
 class AuditEntry {

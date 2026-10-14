@@ -225,3 +225,19 @@ enum PayoutStatus {
 
   static PayoutStatus parse(Object? s) => _byName(values, s, PENDING);
 }
+
+/// Why a shop card stands out; shown as a small coloured pill.
+enum ShopTag {
+  ENDS_TODAY('Ends today'),
+  NEW('New deals'),
+  FREE_DELIVERY('Free delivery'),
+  VENUE_OFFER('Venue offer'),
+  DELIVERY('Delivers to you'),
+  PICKUP('Pickup');
+
+  const ShopTag(this.label);
+
+  final String label;
+
+  static ShopTag parse(Object? s) => ShopTag.values.firstWhere((t) => t.name == s, orElse: () => PICKUP);
+}

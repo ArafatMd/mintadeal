@@ -1,9 +1,15 @@
 package com.mintadeal.discovery;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -22,6 +28,8 @@ import com.mintadeal.common.Geo;
 import com.mintadeal.common.PageResponse;
 import com.mintadeal.customer.VendorFollowRepository;
 import com.mintadeal.discovery.DiscoveryDtos.DiscoveryItem;
+import com.mintadeal.discovery.DiscoveryDtos.ShopCard;
+import com.mintadeal.discovery.DiscoveryDtos.ShopTag;
 import com.mintadeal.discovery.DiscoveryDtos.Storefront;
 import com.mintadeal.discovery.DiscoveryDtos.VendorSummary;
 import com.mintadeal.vendor.Vendor;
@@ -77,6 +85,30 @@ public class DiscoveryService {
     @Transactional(readOnly = true)
     public PageResponse<DiscoveryItem> nearby(double lat, double lng, Filter filter, UUID customerId,
                                               int page, int size) {
+        return paginate(nearbyItems(lat, lng, filter, customerId), page, size);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<DiscoveryItem> citywide(Double lat, Double lng, Filter filter, UUID customerId,
+                                                int page, int size) {
+        return paginate(citywideItems(lat, lng, filter, customerId), page, size);
+    }
+
+    /** Nearby deals grouped into shops, nearest (and followed) first. */
+    @Transactional(readOnly = true)
+    public PageResponse<ShopCard> nearbyShops(double lat, double lng, Filter filter, UUID customerId,
+                                              int page, int size) {
+        return paginate(shops(nearbyItems(lat, lng, filter, customerId)), page, size);
+    }
+
+    /** City-wide deals grouped into shops, most recently updated first. */
+    @Transactional(readOnly = true)
+    public PageResponse<ShopCard> citywideShops(Double lat, Double lng, Filter filter, UUID customerId,
+                                                int page, int size) {
+        return paginate(shops(citywideItems(lat, lng, filter, customerId)), page, size);
+    }
+
+    private List<DiscoveryItem> nearbyItems(double lat, double lng, Filter filter, UUID customerId) {
         double r = props.maxSearchRadiusKm();
         double dLat = r / 111.0;
         double dLng = r / (111.0 * Math.cos(Math.toRadians(lat)));
@@ -92,12 +124,10 @@ public class DiscoveryService {
                         .thenComparing(DiscoveryItem::distanceKm)
                         .thenComparing(i -> i.listing().updatedAt(), Comparator.reverseOrder()))
                 .toList();
-        return paginate(items, page, size);
+        return items;
     }
 
-    @Transactional(readOnly = true)
-    public PageResponse<DiscoveryItem> citywide(Double lat, Double lng, Filter filter, UUID customerId,
-                                                int page, int size) {
+    private List<DiscoveryItem> citywideItems(Double lat, Double lng, Filter filter, UUID customerId) {
         Set<UUID> followed = followedBy(customerId);
         Instant now = clock.instant();
         List<DiscoveryItem> items = repo.citywideCandidates().stream()
@@ -109,7 +139,75 @@ public class DiscoveryService {
                 .map(c -> toCitywideItem(c, lat, lng, followed))
                 .sorted(Comparator.comparing((DiscoveryItem i) -> i.listing().updatedAt()).reversed())
                 .toList();
-        return paginate(items, page, size);
+        return items;
+    }
+
+    /** Groups deals by shop, keeping the order in which each shop first appears. */
+    private List<ShopCard> shops(List<DiscoveryItem> items) {
+        Map<UUID, List<DiscoveryItem>> byShop = new LinkedHashMap<>();
+        for (DiscoveryItem i : items) {
+            byShop.computeIfAbsent(i.vendor().id(), k -> new ArrayList<>()).add(i);
+        }
+        Map<UUID, Long> followers = new HashMap<>();
+        if (!byShop.isEmpty()) {
+            for (Object[] row : follows.countFollowers(byShop.keySet())) {
+                followers.put((UUID) row[0], (Long) row[1]);
+            }
+        }
+        Map<UUID, String> taglines = new HashMap<>();
+        vendors.findAllById(byShop.keySet()).forEach(v -> taglines.put(v.getId(), tagline(v.getDescription())));
+        Instant now = clock.instant();
+        Instant endOfToday = now.atZone(INDIA).toLocalDate().plusDays(1).atStartOfDay(INDIA).toInstant();
+        List<ShopCard> cards = new ArrayList<>();
+        byShop.forEach((vendorId, deals) -> {
+            // The best deal is the biggest discount; it gives the card its cover image.
+            List<DiscoveryItem> best = deals.stream()
+                    .sorted(Comparator.comparing((DiscoveryItem i) -> discount(i)).reversed())
+                    .toList();
+            Integer bestDiscount = discount(best.getFirst()) > 0 ? discount(best.getFirst()) : null;
+            String cover = best.stream().map(i -> i.listing().imageUrl()).filter(u -> u != null).findFirst()
+                    .orElse(null);
+            DiscoveryItem first = deals.getFirst();
+            cards.add(new ShopCard(first.vendor(), taglines.get(vendorId), first.distanceKm(), first.followed(),
+                    followers.getOrDefault(vendorId, 0L), deals.size(), bestDiscount, cover,
+                    tag(deals, now, endOfToday)));
+        });
+        return cards;
+    }
+
+    private static final ZoneId INDIA = ZoneId.of("Asia/Kolkata");
+
+    private static int discount(DiscoveryItem i) {
+        return i.listing().discountPercent() == null ? 0 : i.listing().discountPercent();
+    }
+
+    private static ShopTag tag(List<DiscoveryItem> deals, Instant now, Instant endOfToday) {
+        if (deals.stream().anyMatch(i -> i.listing().validTo() != null && i.listing().validTo().isBefore(endOfToday))) {
+            return ShopTag.ENDS_TODAY;
+        }
+        if (deals.stream().anyMatch(i -> i.listing().createdAt().isAfter(now.minus(Duration.ofDays(7))))) {
+            return ShopTag.NEW;
+        }
+        if (deals.stream().anyMatch(i -> i.deliverable()
+                && (i.deliveryFeeMinor() == null || i.deliveryFeeMinor() == 0))) {
+            return ShopTag.FREE_DELIVERY;
+        }
+        if (deals.stream().anyMatch(DiscoveryItem::venueOffer)) {
+            return ShopTag.VENUE_OFFER;
+        }
+        return deals.stream().anyMatch(DiscoveryItem::deliverable) ? ShopTag.DELIVERY : ShopTag.PICKUP;
+    }
+
+    /** The first line of a shop's description, kept short for a card. */
+    static String tagline(String description) {
+        if (description == null || description.isBlank()) {
+            return null;
+        }
+        String line = description.strip().split("\\R|(?<=[.!?])\\s", 2)[0].strip();
+        if (line.endsWith(".")) {
+            line = line.substring(0, line.length() - 1);
+        }
+        return line.length() <= 40 ? line : line.substring(0, 39).strip() + "…";
     }
 
     @Transactional(readOnly = true)

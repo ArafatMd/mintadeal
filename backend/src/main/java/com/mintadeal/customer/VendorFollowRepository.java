@@ -13,4 +13,8 @@ public interface VendorFollowRepository extends JpaRepository<VendorFollow, Vend
 
     @Query("select count(f) from VendorFollow f where f.id.vendorId = :vendorId")
     long countFollowers(UUID vendorId);
+
+    /** Follower counts for several shops at once, as (vendorId, count) rows; shops with none are left out. */
+    @Query("select f.id.vendorId, count(f) from VendorFollow f where f.id.vendorId in :vendorIds group by f.id.vendorId")
+    List<Object[]> countFollowers(java.util.Collection<UUID> vendorIds);
 }

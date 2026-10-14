@@ -77,6 +77,34 @@ class MintadealApi {
     return PageResult.fromJson(j, DiscoveryItem.fromJson);
   }
 
+  /// Nearby deals grouped into shops, for the home screen.
+  Future<PageResult<ShopCard>> nearbyShops(GeoPoint at,
+      {VendorCategory? category, ListingType? type, String? q, int page = 0}) async {
+    final j = await client.get('/api/discovery/nearby/shops', query: {
+      'lat': at.lat,
+      'lng': at.lng,
+      'category': category?.name,
+      'type': type?.name,
+      'q': q,
+      'page': page,
+    }) as Json;
+    return PageResult.fromJson(j, ShopCard.fromJson);
+  }
+
+  /// City-wide deals grouped into shops.
+  Future<PageResult<ShopCard>> bangaloreShops(
+      {GeoPoint? at, VendorCategory? category, ListingType? type, String? q, int page = 0}) async {
+    final j = await client.get('/api/discovery/bangalore/shops', query: {
+      'lat': at?.lat,
+      'lng': at?.lng,
+      'category': category?.name,
+      'type': type?.name,
+      'q': q,
+      'page': page,
+    }) as Json;
+    return PageResult.fromJson(j, ShopCard.fromJson);
+  }
+
   Future<DiscoveryItem> listing(String id, {GeoPoint? at}) async => DiscoveryItem.fromJson(
       await client.get('/api/discovery/listings/$id', query: {'lat': at?.lat, 'lng': at?.lng}) as Json);
 

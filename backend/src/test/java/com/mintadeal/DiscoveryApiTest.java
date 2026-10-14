@@ -69,6 +69,29 @@ class DiscoveryApiTest extends ApiTest {
     }
 
     @Test
+    void homeScreenGroupsDealsIntoShopCards() throws Exception {
+        publish(grocery, """
+                {"listingType":"PRODUCT","title":"Local dal","priceMinor":200,"offerPriceMinor":150,
+                 "fulfilmentModes":["PICKUP"]}""");
+        call(GET("/api/discovery/nearby/shops?" + HSR), null, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(3))
+                // Nearest first: the boutique is about 0.2 km away, the grocery 0.3 km.
+                .andExpect(jsonPath("$.items[0].vendor.displayName").value("Citywide Boutique"))
+                .andExpect(jsonPath("$.items[1].vendor.displayName").value("Local Grocery"))
+                .andExpect(jsonPath("$.items[1].dealCount").value(2))
+                .andExpect(jsonPath("$.items[1].bestDiscountPercent").value(25))
+                .andExpect(jsonPath("$.items[1].tag").value("NEW"))
+                .andExpect(jsonPath("$.items[1].followers").value(0));
+        call(GET("/api/discovery/nearby/shops?" + HSR + "&type=OFFER"), null, null)
+                .andExpect(jsonPath("$.items[*].vendor.displayName").value(contains("HSR Salon")))
+                .andExpect(jsonPath("$.items[0].bestDiscountPercent").doesNotExist());
+        call(GET("/api/discovery/bangalore/shops"), null, null)
+                .andExpect(jsonPath("$.items[*].vendor.displayName")
+                        .value(containsInAnyOrder("Citywide Boutique", "HSR Salon")));
+    }
+
+    @Test
     void outOfStockAndPausedListingsAreHidden() throws Exception {
         String id = publish(grocery, """
                 {"listingType":"PRODUCT","title":"Sold out rice","priceMinor":100,"stock":0,

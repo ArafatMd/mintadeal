@@ -12,6 +12,7 @@ class CartButton extends ConsumerWidget {
     final count = ref.watch(cartCountProvider);
     return IconButton(
       tooltip: 'Cart',
+      visualDensity: VisualDensity.compact,
       onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CartScreen())),
       icon: Badge(
         isLabelVisible: count > 0,

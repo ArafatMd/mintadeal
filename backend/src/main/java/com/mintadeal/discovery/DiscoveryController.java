@@ -12,6 +12,7 @@ import com.mintadeal.catalogue.ListingType;
 import com.mintadeal.common.CurrentUser;
 import com.mintadeal.common.PageResponse;
 import com.mintadeal.discovery.DiscoveryDtos.DiscoveryItem;
+import com.mintadeal.discovery.DiscoveryDtos.ShopCard;
 import com.mintadeal.discovery.DiscoveryDtos.Storefront;
 import com.mintadeal.discovery.DiscoveryService.Filter;
 import com.mintadeal.vendor.VendorCategory;
@@ -49,6 +50,32 @@ public class DiscoveryController {
                                                  @RequestParam(defaultValue = "0") int page,
                                                  @RequestParam(defaultValue = "20") int size) {
         return service.citywide(lat, lng, new Filter(category, type, q, followedOnly), CurrentUser.idOrNull(),
+                page, size);
+    }
+
+    /** Nearby deals as shop cards: the home screen. Same filters as /nearby. */
+    @GetMapping("/nearby/shops")
+    public PageResponse<ShopCard> nearbyShops(@RequestParam double lat, @RequestParam double lng,
+                                              @RequestParam(required = false) VendorCategory category,
+                                              @RequestParam(required = false) ListingType type,
+                                              @RequestParam(required = false) String q,
+                                              @RequestParam(defaultValue = "false") boolean followedOnly,
+                                              @RequestParam(defaultValue = "0") int page,
+                                              @RequestParam(defaultValue = "20") int size) {
+        return service.nearbyShops(lat, lng, new Filter(category, type, q, followedOnly), CurrentUser.idOrNull(),
+                page, size);
+    }
+
+    @GetMapping("/bangalore/shops")
+    public PageResponse<ShopCard> bangaloreShops(@RequestParam(required = false) Double lat,
+                                                 @RequestParam(required = false) Double lng,
+                                                 @RequestParam(required = false) VendorCategory category,
+                                                 @RequestParam(required = false) ListingType type,
+                                                 @RequestParam(required = false) String q,
+                                                 @RequestParam(defaultValue = "false") boolean followedOnly,
+                                                 @RequestParam(defaultValue = "0") int page,
+                                                 @RequestParam(defaultValue = "20") int size) {
+        return service.citywideShops(lat, lng, new Filter(category, type, q, followedOnly), CurrentUser.idOrNull(),
                 page, size);
     }
 

@@ -211,6 +211,30 @@ class DiscoveryItem {
   final bool followed;
 }
 
+/// A shop on the home screen with a summary of its deals that this customer can get.
+class ShopCard {
+  ShopCard.fromJson(Json j)
+      : vendor = VendorSummary.fromJson(j['vendor'] as Json),
+        tagline = j['tagline'] as String?,
+        distanceKm = _double(j['distanceKm']),
+        followed = j['followed'] as bool? ?? false,
+        followers = _int(j['followers']) ?? 0,
+        dealCount = _int(j['dealCount']) ?? 0,
+        bestDiscountPercent = _int(j['bestDiscountPercent']),
+        coverImageUrl = j['coverImageUrl'] as String?,
+        tag = ShopTag.parse(j['tag']);
+
+  final VendorSummary vendor;
+  final String? tagline;
+  final double? distanceKm;
+  final bool followed;
+  final int followers;
+  final int dealCount;
+  final int? bestDiscountPercent;
+  final String? coverImageUrl;
+  final ShopTag tag;
+}
+
 class Storefront {
   Storefront.fromJson(Json j)
       : vendor = VendorPublic.fromJson(j['vendor'] as Json),

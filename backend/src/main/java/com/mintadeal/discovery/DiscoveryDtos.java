@@ -26,6 +26,21 @@ public final class DiscoveryDtos {
                                 Long deliveryFeeMinor, boolean followed) {
     }
 
+    /** Why a shop card stands out, shown as a small coloured pill. */
+    public enum ShopTag { ENDS_TODAY, NEW, FREE_DELIVERY, VENUE_OFFER, DELIVERY, PICKUP }
+
+    /**
+     * A shop on the home screen, summarising the deals of it that this customer can get.
+     *
+     * @param tagline         the first line of the shop's description, or null
+     * @param bestDiscountPercent the largest discount among its deals, or null when none is discounted
+     * @param coverImageUrl   the image of its best deal that has one, or null
+     */
+    public record ShopCard(VendorSummary vendor, String tagline, Double distanceKm, boolean followed,
+                           long followers, int dealCount, Integer bestDiscountPercent, String coverImageUrl,
+                           ShopTag tag) {
+    }
+
     public record Storefront(VendorPublicDto vendor, Double distanceKm, boolean followed, long followers,
                              List<DiscoveryItem> listings) {
     }

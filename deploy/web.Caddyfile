@@ -34,7 +34,7 @@
 
 # The public website (website/ in the repository, served as is: `git pull` updates it).
 :8085 {
-	root * /srv/site
+	root * /site
 	encode gzip zstd
 	header /assets/* Cache-Control "public, max-age=86400"
 	# /terms serves terms.html

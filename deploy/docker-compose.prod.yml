@@ -56,7 +56,7 @@ services:
     volumes:
       - ./web.Caddyfile:/etc/caddy/Caddyfile:ro
       - ./web:/srv:ro
-      - ../website:/srv/site:ro
+      - ../website:/site:ro
     mem_limit: 64m
     networks:
       edge:

@@ -20,3 +20,5 @@ mintadeal:
     sweep-interval-ms: 3600000
   notifications:
     synchronous: true
+  rate-limit:
+    enabled: false

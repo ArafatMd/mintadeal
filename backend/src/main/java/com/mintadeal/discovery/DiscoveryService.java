@@ -30,6 +30,8 @@ import com.mintadeal.customer.VendorFollowRepository;
 import com.mintadeal.discovery.DiscoveryDtos.DiscoveryItem;
 import com.mintadeal.discovery.DiscoveryDtos.ShopCard;
 import com.mintadeal.discovery.DiscoveryDtos.ShopTag;
+import com.mintadeal.review.ReviewDtos.RatingSummary;
+import com.mintadeal.review.ReviewService;
 import com.mintadeal.discovery.DiscoveryDtos.Storefront;
 import com.mintadeal.discovery.DiscoveryDtos.VendorSummary;
 import com.mintadeal.vendor.Vendor;
@@ -70,15 +72,18 @@ public class DiscoveryService {
     private final ListingRepository listings;
     private final VendorFollowRepository follows;
     private final DiscoveryProperties props;
+    private final ReviewService reviews;
     private final Clock clock;
 
     public DiscoveryService(DiscoveryRepository repo, VendorRepository vendors, ListingRepository listings,
-                            VendorFollowRepository follows, DiscoveryProperties props, Clock clock) {
+                            VendorFollowRepository follows, DiscoveryProperties props, ReviewService reviews,
+                            Clock clock) {
         this.repo = repo;
         this.vendors = vendors;
         this.listings = listings;
         this.follows = follows;
         this.props = props;
+        this.reviews = reviews;
         this.clock = clock;
     }
 
@@ -162,6 +167,7 @@ public class DiscoveryService {
                 covers.put(v.getId(), v.getCoverUrl());
             }
         });
+        Map<UUID, RatingSummary> ratings = reviews.summaries(byShop.keySet());
         Instant now = clock.instant();
         Instant endOfToday = now.atZone(INDIA).toLocalDate().plusDays(1).atStartOfDay(INDIA).toInstant();
         List<ShopCard> cards = new ArrayList<>();
@@ -174,9 +180,10 @@ public class DiscoveryService {
             String cover = covers.getOrDefault(vendorId, best.stream().map(i -> i.listing().imageUrl())
                     .filter(u -> u != null).findFirst().orElse(null));
             DiscoveryItem first = deals.getFirst();
+            RatingSummary rating = ratings.getOrDefault(vendorId, RatingSummary.NONE);
             cards.add(new ShopCard(first.vendor(), taglines.get(vendorId), first.distanceKm(), first.followed(),
                     followers.getOrDefault(vendorId, 0L), deals.size(), bestDiscount, cover,
-                    tag(deals, now, endOfToday)));
+                    tag(deals, now, endOfToday), rating.count() == 0 ? null : rating.average(), rating.count()));
         });
         return cards;
     }
@@ -241,8 +248,9 @@ public class DiscoveryService {
                 .toList();
         Double distance = lat != null && lng != null ? round(Geo.distanceKm(lat, lng,
                 vendor.getLatitude(), vendor.getLongitude())) : null;
+        RatingSummary rating = reviews.summary(vendorId);
         return new Storefront(VendorPublicDto.of(vendor), distance, followed.contains(vendorId),
-                follows.countFollowers(vendorId), items);
+                follows.countFollowers(vendorId), items, rating.count() == 0 ? null : rating.average(), rating.count());
     }
 
     private DiscoveryItem toItem(Candidate c, double lat, double lng, Set<UUID> followed) {

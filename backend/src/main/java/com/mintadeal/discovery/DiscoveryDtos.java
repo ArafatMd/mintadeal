@@ -34,14 +34,15 @@ public final class DiscoveryDtos {
      *
      * @param tagline         the first line of the shop's description, or null
      * @param bestDiscountPercent the largest discount among its deals, or null when none is discounted
+     * @param rating          average of visible reviews, one decimal; null when there are none
      * @param coverImageUrl   the shop's cover photo, else the image of its best deal that has one, or null
      */
     public record ShopCard(VendorSummary vendor, String tagline, Double distanceKm, boolean followed,
                            long followers, int dealCount, Integer bestDiscountPercent, String coverImageUrl,
-                           ShopTag tag) {
+                           ShopTag tag, Double rating, long ratingCount) {
     }
 
     public record Storefront(VendorPublicDto vendor, Double distanceKm, boolean followed, long followers,
-                             List<DiscoveryItem> listings) {
+                             List<DiscoveryItem> listings, Double rating, long ratingCount) {
     }
 }

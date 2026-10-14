@@ -44,6 +44,13 @@ services:
       TZ: Asia/Kolkata
     volumes:
       - files:/data/files
+    # The image has no curl, so bash opens the connection itself. Unhealthy containers show in `docker ps`.
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
     mem_limit: 1g
     networks:
       internal:

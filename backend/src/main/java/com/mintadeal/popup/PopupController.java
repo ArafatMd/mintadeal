@@ -92,6 +92,18 @@ public class PopupController {
         return service.one(id, lat, lng);
     }
 
+    /** The customer app tells us a stall was opened, or Call, WhatsApp or Directions was tapped. */
+    @PostMapping("/api/discovery/popups/{id}/events")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void react(@PathVariable UUID id, @Valid @RequestBody PopupDtos.ReactionRequest req) {
+        service.react(id, req.type());
+    }
+
+    @GetMapping("/api/admin/popup-sellers/{userId}/report")
+    public PopupDtos.SellerReport sellerReport(@PathVariable UUID userId) {
+        return service.report(userId);
+    }
+
     @PostMapping("/api/popup/stalls/{id}/report")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void report(@PathVariable UUID id, @Valid @RequestBody ReportRequest req) {

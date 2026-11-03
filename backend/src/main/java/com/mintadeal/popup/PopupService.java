@@ -465,6 +465,41 @@ public class PopupService {
         audit.record("POPUP_SELLER_UNBLOCKED", "POPUP_SELLER", sellerId, null);
     }
 
+    /** Counts a customer's reaction to a live stall; anything else is ignored, never an error for the customer. */
+    @Transactional
+    public void react(UUID popupId, PopupDtos.Reaction type) {
+        Popup p = popups.findById(popupId).orElse(null);
+        if (p == null || p.status(clock.instant()) != Status.LIVE) {
+            return;
+        }
+        switch (type) {
+            case VIEW -> popups.countView(popupId);
+            case CALL -> popups.countCall(popupId);
+            case WHATSAPP -> popups.countWhatsapp(popupId);
+            case DIRECTIONS -> popups.countDirections(popupId);
+        }
+    }
+
+    /** A seller's stalls with their counts, newest first, for an admin to share on request. */
+    @Transactional(readOnly = true)
+    public PopupDtos.SellerReport report(UUID userId) {
+        User user = users.findById(userId).orElseThrow(() -> ApiException.notFound("Person"));
+        PopupSeller seller = sellers.findById(userId).orElse(null);
+        Vendor shop = shopOf(userId);
+        Instant now = clock.instant();
+        List<PopupDtos.ReportLine> lines = popups.findTop100BySellerIdOrderByCreatedAtDesc(userId).stream()
+                .filter(p -> p.getFeeMinor() == 0 || p.getPaidAt() != null)
+                .map(p -> new PopupDtos.ReportLine(p.getId(), p.getSellerName(), p.getLatitude(), p.getLongitude(),
+                        p.getDays(), p.getStartsAt(), p.getStoppedAt() != null ? p.getStoppedAt()
+                        : p.getRemovedAt() != null ? p.getRemovedAt() : p.getEndsAt(), p.status(now),
+                        PopupDtos.Counts.of(p)))
+                .toList();
+        PopupDtos.Counts total = lines.stream().map(PopupDtos.ReportLine::counts)
+                .reduce(new PopupDtos.Counts(0, 0, 0, 0), PopupDtos.Counts::plus);
+        return new PopupDtos.SellerReport(userId, seller != null ? seller.getName() : user.getName(), user.getPhone(),
+                shop == null ? null : shop.getDisplayName(), lines.size(), total, lines);
+    }
+
     @Transactional(readOnly = true)
     public SettingsDto settingsView() {
         return SettingsDto.of(settings());
@@ -528,7 +563,7 @@ public class PopupService {
                     p.getItems().stream().map(ItemDto::of).toList(), p.getLatitude(), p.getLongitude(), p.getDays(),
                     p.getStartsAt(), p.getEndsAt(), p.getStoppedAt(), p.getRemovedAt(), p.getRemovedReason(),
                     p.getMovedAt(), n, rs, p.getVendorId(), p.getVendorName(), p.getFeeMinor(),
-                    p.getPaymentProvider(), p.getPaidAt());
+                    p.getPaymentProvider(), p.getPaidAt(), PopupDtos.Counts.of(p));
         };
     }
 }

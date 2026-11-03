@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
@@ -77,6 +78,47 @@ Future<void> editPopupDefaults(BuildContext context, WidgetRef ref) async {
     await ref.read(apiProvider).updatePopupSettings(saved);
     ref.invalidate(_settingsProvider);
     if (context.mounted) showMessage(context, 'Defaults saved');
+  } catch (e) {
+    if (context.mounted) showError(context, e);
+  }
+}
+
+String _times(int n, String what) => '$n $what${n == 1 ? '' : 's'}';
+
+/// A plain-text report to paste into WhatsApp for a seller who asks how their stalls did.
+String sellerReportText(SellerReport r) {
+  final day = DateFormat('d MMM');
+  final t = r.total;
+  final who = [r.name ?? r.phone ?? 'Seller', if (r.shopName != null && r.shopName != r.name) r.shopName!].join(', ');
+  final b = StringBuffer()..writeln('Mintadeal pop-up stall report: $who');
+  if (r.lines.isEmpty) {
+    b.writeln('No stalls yet.');
+    return b.toString();
+  }
+  b
+    ..writeln('${_times(r.stalls, 'stall')}, ${day.format(r.lines.last.startsAt)} to ${day.format(r.lines.first.endedAt)}')
+    ..writeln()
+    ..writeln('Customers opened your stall ${_times(t.views, 'time')}.')
+    ..writeln('Calls: ${t.calls} · WhatsApp: ${t.whatsapp} · Directions: ${t.directions}')
+    ..writeln()
+    ..writeln('Each stall:');
+  for (final l in r.lines) {
+    final area = nearestArea(GeoPoint(l.latitude, l.longitude)).name;
+    b.writeln('• ${day.format(l.startsAt)}, ${_times(l.days, 'day')}, near $area: ${_times(l.counts.views, 'open')}, '
+        '${_times(l.counts.calls, 'call')}, ${l.counts.whatsapp} WhatsApp, ${l.counts.directions} directions');
+  }
+  b
+    ..writeln()
+    ..writeln('"Opened" counts each time a customer opened your stall in the app.');
+  return b.toString();
+}
+
+/// Copies a seller's report, ready to paste into WhatsApp.
+Future<void> copySellerReport(BuildContext context, WidgetRef ref, String userId) async {
+  try {
+    final r = await ref.read(apiProvider).sellerReport(userId);
+    await Clipboard.setData(ClipboardData(text: sellerReportText(r)));
+    if (context.mounted) showMessage(context, 'Report copied. Paste it into WhatsApp to send it.');
   } catch (e) {
     if (context.mounted) showError(context, e);
   }
@@ -167,10 +209,17 @@ class _PopupsPageState extends ConsumerState<PopupsPage> {
           Text('Pop-up stalls', style: theme.textTheme.headlineSmall),
           const SizedBox(width: 8),
           if (_seller != null)
-            InputChip(
-              label: Text('All stalls of ${_seller!.$2}'),
-              onDeleted: () => setState(() => _seller = null),
-            )
+            ...[
+              InputChip(
+                label: Text('All stalls of ${_seller!.$2}'),
+                onDeleted: () => setState(() => _seller = null),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: () => copySellerReport(context, ref, _seller!.$1),
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text('Copy report'),
+              ),
+            ]
           else
             for (final f in PopupFilter.values)
               ChoiceChip(
@@ -225,6 +274,7 @@ class _PopupsPageState extends ConsumerState<PopupsPage> {
             onUnblock: () => _act(() => api.unblockPopupSeller(p.sellerId), 'Seller unblocked'),
             onHistory: () => setState(() => _seller = (p.sellerId, p.sellerName)),
             onLimits: () => editSellerLimits(context, ref, p.sellerId),
+            onReport: () => copySellerReport(context, ref, p.sellerId),
           ),
         ),
       ),
@@ -241,6 +291,7 @@ class _PopupTile extends StatelessWidget {
     required this.onUnblock,
     required this.onHistory,
     required this.onLimits,
+    required this.onReport,
   });
 
   final AdminPopup popup;
@@ -250,6 +301,7 @@ class _PopupTile extends StatelessWidget {
   final VoidCallback onUnblock;
   final VoidCallback onHistory;
   final VoidCallback onLimits;
+  final VoidCallback onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -308,6 +360,23 @@ class _PopupTile extends StatelessWidget {
             ].join(' · '),
             style: theme.textTheme.bodySmall,
           ),
+          const SizedBox(height: 4),
+          Wrap(spacing: 14, children: [
+            for (final (icon, n, label) in [
+              (Icons.visibility_outlined, p.counts.views, 'opens'),
+              (Icons.call_outlined, p.counts.calls, 'calls'),
+              (Icons.chat_outlined, p.counts.whatsapp, 'WhatsApp'),
+              (Icons.directions_outlined, p.counts.directions, 'directions'),
+            ])
+              Tooltip(
+                message: 'Only you see these. Copy report to share them with the seller.',
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 4),
+                  Text('$n $label', style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+                ]),
+              ),
+          ]),
           if (p.removedReason != null)
             Text(p.removedReason!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
           const SizedBox(height: 10),
@@ -348,6 +417,7 @@ class _PopupTile extends StatelessWidget {
               TextButton(onPressed: onBlock, child: const Text('Block seller')),
             TextButton(onPressed: onHistory, child: const Text('All stalls of this seller')),
             TextButton(onPressed: onLimits, child: const Text('Limits and fee')),
+            TextButton(onPressed: onReport, child: const Text('Copy report')),
             TextButton.icon(
               onPressed: () => launchUrl(
                   Uri.parse('https://www.google.com/maps/search/?api=1&query=${p.latitude},${p.longitude}'),

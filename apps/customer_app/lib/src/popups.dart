@@ -197,12 +197,13 @@ class PopupScreen extends ConsumerWidget {
       body: AsyncView(
         value: future,
         onRetry: () => ref.invalidate(_popupProvider((popupId, at?.lat, at?.lng))),
-        data: (p) => _body(context, p),
+        data: (p) => _body(context, ref, p),
       ),
     );
   }
 
-  Widget _body(BuildContext context, PublicPopup p) {
+  Widget _body(BuildContext context, WidgetRef ref, PublicPopup p) {
+    void tapped(PopupReaction r) => ref.read(apiProvider).popupEvent(p.id, r);
     final theme = Theme.of(context);
     final phone = p.phone;
     final digits = phone?.replaceAll(RegExp(r'[^0-9]'), '');
@@ -245,21 +246,29 @@ class PopupScreen extends ConsumerWidget {
       const SizedBox(height: 14),
       Wrap(spacing: 8, runSpacing: 8, children: [
         FilledButton.icon(
-          onPressed: () => launchUrl(
-              Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${p.latitude},${p.longitude}'),
-              mode: LaunchMode.externalApplication),
+          onPressed: () {
+            tapped(PopupReaction.DIRECTIONS);
+            launchUrl(Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${p.latitude},${p.longitude}'),
+                mode: LaunchMode.externalApplication);
+          },
           icon: const Icon(Icons.directions),
           label: const Text('Directions'),
         ),
         if (phone != null)
           OutlinedButton.icon(
-            onPressed: () => launchUrl(Uri(scheme: 'tel', path: phone)),
+            onPressed: () {
+              tapped(PopupReaction.CALL);
+              launchUrl(Uri(scheme: 'tel', path: phone));
+            },
             icon: const Icon(Icons.call),
             label: const Text('Call'),
           ),
         if (digits != null)
           OutlinedButton.icon(
-            onPressed: () => launchUrl(Uri.parse('https://wa.me/$digits'), mode: LaunchMode.externalApplication),
+            onPressed: () {
+              tapped(PopupReaction.WHATSAPP);
+              launchUrl(Uri.parse('https://wa.me/$digits'), mode: LaunchMode.externalApplication);
+            },
             icon: const Icon(Icons.chat_outlined),
             label: const Text('WhatsApp'),
           ),
@@ -306,8 +315,13 @@ class PopupScreen extends ConsumerWidget {
   }
 }
 
-final _popupProvider = FutureProvider.autoDispose.family<PublicPopup, (String, double?, double?)>((ref, k) =>
-    ref.watch(apiProvider).popup(k.$1, at: k.$2 == null ? null : GeoPoint(k.$2!, k.$3!)));
+final _popupProvider = FutureProvider.autoDispose.family<PublicPopup, (String, double?, double?)>((ref, k) async {
+  final api = ref.watch(apiProvider);
+  final p = await api.popup(k.$1, at: k.$2 == null ? null : GeoPoint(k.$2!, k.$3!));
+  // Counted once each time the page opens, for the admin's report to the seller.
+  api.popupEvent(p.id, PopupReaction.VIEW);
+  return p;
+});
 
 /// Every stall near the customer, as a list or on a map.
 class PopupsScreen extends ConsumerStatefulWidget {

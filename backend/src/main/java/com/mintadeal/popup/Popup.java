@@ -83,6 +83,15 @@ public class Popup {
 
     private Instant paidAt;
 
+    // Customers' reactions, for admins only. Changed by single UPDATE statements so taps never clash.
+    private int viewCount;
+
+    private int callCount;
+
+    private int whatsappCount;
+
+    private int directionsCount;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "popup_item", joinColumns = @JoinColumn(name = "popup_id"))
     @OrderColumn(name = "position")
@@ -250,6 +259,22 @@ public class Popup {
 
     public Instant getPaidAt() {
         return paidAt;
+    }
+
+    public int getViewCount() {
+        return viewCount;
+    }
+
+    public int getCallCount() {
+        return callCount;
+    }
+
+    public int getWhatsappCount() {
+        return whatsappCount;
+    }
+
+    public int getDirectionsCount() {
+        return directionsCount;
     }
 
     public List<PopupItem> getItems() {

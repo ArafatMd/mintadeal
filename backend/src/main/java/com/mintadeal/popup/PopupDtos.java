@@ -122,7 +122,36 @@ public final class PopupDtos {
                              Status status, List<ItemDto> items, double latitude, double longitude, int days,
                              Instant startsAt, Instant endsAt, Instant stoppedAt, Instant removedAt,
                              String removedReason, Instant movedAt, long reportCount, List<ReportDto> reports,
-                             UUID vendorId, String vendorName, long feeMinor, String paymentProvider, Instant paidAt) {
+                             UUID vendorId, String vendorName, long feeMinor, String paymentProvider, Instant paidAt,
+                             Counts counts) {
+    }
+
+    /** How customers reacted to a stall. Views are page opens, not different people. */
+    public record Counts(long views, long calls, long whatsapp, long directions) {
+
+        static Counts of(Popup p) {
+            return new Counts(p.getViewCount(), p.getCallCount(), p.getWhatsappCount(), p.getDirectionsCount());
+        }
+
+        Counts plus(Counts o) {
+            return new Counts(views + o.views, calls + o.calls, whatsapp + o.whatsapp, directions + o.directions);
+        }
+    }
+
+    /** A customer opened a stall or tapped one of its buttons. */
+    public enum Reaction { VIEW, CALL, WHATSAPP, DIRECTIONS }
+
+    public record ReactionRequest(@NotNull Reaction type) {
+    }
+
+    /** One stall in a seller's report. */
+    public record ReportLine(UUID id, String name, double latitude, double longitude, int days, Instant startsAt,
+                             Instant endedAt, Status status, Counts counts) {
+    }
+
+    /** What an admin can share with a seller who asks how their stalls did. */
+    public record SellerReport(UUID userId, String name, String phone, String shopName, int stalls, Counts total,
+                               List<ReportLine> lines) {
     }
 
     public record ReportDto(Reason reason, String note, Instant createdAt) {

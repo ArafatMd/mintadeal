@@ -122,6 +122,18 @@ class MintadealApi {
   Future<PublicPopup> popup(String id, {GeoPoint? at}) async => PublicPopup.fromJson(await client.get(
       '/api/discovery/popups/$id', query: {if (at != null) 'lat': at.lat, if (at != null) 'lng': at.lng}) as Json);
 
+  /// Tells Mintadeal a stall was opened or one of its buttons tapped. Never fails for the customer.
+  Future<void> popupEvent(String id, PopupReaction type) async {
+    try {
+      await client.post('/api/discovery/popups/$id/events', {'type': type.name});
+    } on Object {
+      // Counting is best effort.
+    }
+  }
+
+  Future<SellerReport> sellerReport(String userId) async =>
+      SellerReport.fromJson(await client.get('/api/admin/popup-sellers/$userId/report') as Json);
+
   Future<void> reportPopup(String id, PopupReportReason reason, {String? note}) =>
       client.post('/api/popup/stalls/$id/report', {'reason': reason.name, 'note': note});
 

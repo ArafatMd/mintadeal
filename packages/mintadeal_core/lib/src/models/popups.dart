@@ -234,7 +234,8 @@ class AdminPopup {
         vendorName = j['vendorName'] as String?,
         feeMinor = (j['feeMinor'] as num?)?.toInt() ?? 0,
         paymentProvider = j['paymentProvider'] as String?,
-        paidAt = _date(j['paidAt']);
+        paidAt = _date(j['paidAt']),
+        counts = PopupCounts.fromJson(j['counts'] as Json? ?? const {});
 
   final String id;
   final String sellerId;
@@ -261,4 +262,61 @@ class AdminPopup {
   /// SHOP_BALANCE when taken from the shop's balance, else the online provider.
   final String? paymentProvider;
   final DateTime? paidAt;
+  final PopupCounts counts;
+}
+
+/// How customers reacted to a stall. Views are page opens, not different people. Admins only.
+class PopupCounts {
+  PopupCounts.fromJson(Json j)
+      : views = (j['views'] as num?)?.toInt() ?? 0,
+        calls = (j['calls'] as num?)?.toInt() ?? 0,
+        whatsapp = (j['whatsapp'] as num?)?.toInt() ?? 0,
+        directions = (j['directions'] as num?)?.toInt() ?? 0;
+
+  final int views;
+  final int calls;
+  final int whatsapp;
+  final int directions;
+}
+
+// ignore: constant_identifier_names
+enum PopupReaction { VIEW, CALL, WHATSAPP, DIRECTIONS }
+
+class PopupReportLine {
+  PopupReportLine.fromJson(Json j)
+      : name = j['name'] as String,
+        latitude = _double(j['latitude']),
+        longitude = _double(j['longitude']),
+        days = (j['days'] as num).toInt(),
+        startsAt = _date(j['startsAt'])!,
+        endedAt = _date(j['endedAt'])!,
+        status = PopupStatus.values.byName(j['status'] as String),
+        counts = PopupCounts.fromJson(j['counts'] as Json);
+
+  final String name;
+  final double latitude;
+  final double longitude;
+  final int days;
+  final DateTime startsAt;
+  final DateTime endedAt;
+  final PopupStatus status;
+  final PopupCounts counts;
+}
+
+/// A seller's stalls and how they did, for an admin to share on request.
+class SellerReport {
+  SellerReport.fromJson(Json j)
+      : name = j['name'] as String?,
+        phone = j['phone'] as String?,
+        shopName = j['shopName'] as String?,
+        stalls = (j['stalls'] as num).toInt(),
+        total = PopupCounts.fromJson(j['total'] as Json),
+        lines = [for (final l in j['lines'] as List) PopupReportLine.fromJson(l as Json)];
+
+  final String? name;
+  final String? phone;
+  final String? shopName;
+  final int stalls;
+  final PopupCounts total;
+  final List<PopupReportLine> lines;
 }

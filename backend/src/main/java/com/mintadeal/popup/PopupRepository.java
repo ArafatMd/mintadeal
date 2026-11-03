@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 public interface PopupRepository extends JpaRepository<Popup, UUID> {
@@ -26,6 +27,24 @@ public interface PopupRepository extends JpaRepository<Popup, UUID> {
     long countAwaitingPayment(UUID sellerId, Instant now);
 
     Optional<Popup> findByPaymentReference(String reference);
+
+    @Modifying
+    @Query("update Popup p set p.viewCount = p.viewCount + 1 where p.id = :id")
+    int countView(UUID id);
+
+    @Modifying
+    @Query("update Popup p set p.callCount = p.callCount + 1 where p.id = :id")
+    int countCall(UUID id);
+
+    @Modifying
+    @Query("update Popup p set p.whatsappCount = p.whatsappCount + 1 where p.id = :id")
+    int countWhatsapp(UUID id);
+
+    @Modifying
+    @Query("update Popup p set p.directionsCount = p.directionsCount + 1 where p.id = :id")
+    int countDirections(UUID id);
+
+    List<Popup> findTop100BySellerIdOrderByCreatedAtDesc(UUID sellerId);
 
     List<Popup> findTop20BySellerIdOrderByCreatedAtDesc(UUID sellerId);
 

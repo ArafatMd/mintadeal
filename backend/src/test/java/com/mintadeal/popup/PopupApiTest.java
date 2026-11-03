@@ -130,4 +130,33 @@ class PopupApiTest extends ApiTest {
         call(POST("/api/popup/stalls/" + id + "/report"), null, "{\"reason\":\"OTHER\"}")
                 .andExpect(status().isUnauthorized());
     }
+    @Test
+    void customersReactionsAreCountedForAdminsOnly() throws Exception {
+        String seller = login("9811100006");
+        String id = read(call(POST("/api/popup/stalls"), seller, stall("Corn Cart", "Masala corn", 2)), "$.active[0].id");
+        String sellerId = read(call(GET("/api/me"), seller, null), "$.id");
+        for (String type : new String[] {"VIEW", "VIEW", "VIEW", "CALL", "WHATSAPP", "DIRECTIONS", "DIRECTIONS"}) {
+            call(POST("/api/discovery/popups/" + id + "/events"), null, "{\"type\":\"" + type + "\"}")
+                    .andExpect(status().isNoContent());
+        }
+        String admin = login(ADMIN_PHONE);
+        call(GET("/api/admin/popups?filter=LIVE"), admin, null)
+                .andExpect(jsonPath("$.items[0].counts.views").value(3))
+                .andExpect(jsonPath("$.items[0].counts.calls").value(1))
+                .andExpect(jsonPath("$.items[0].counts.directions").value(2));
+        call(GET("/api/admin/popup-sellers/" + sellerId + "/report"), admin, null)
+                .andExpect(jsonPath("$.stalls").value(1))
+                .andExpect(jsonPath("$.total.views").value(3))
+                .andExpect(jsonPath("$.total.whatsapp").value(1))
+                .andExpect(jsonPath("$.lines[0].name").value("Corn Cart"));
+        // The seller does not see counts, and cannot read the admin report.
+        call(GET("/api/popup/me"), seller, null).andExpect(jsonPath("$.active[0].counts").doesNotExist());
+        call(GET("/api/admin/popup-sellers/" + sellerId + "/report"), seller, null).andExpect(status().isForbidden());
+        // Taps on a stall that has ended are not counted.
+        call(POST("/api/popup/stalls/" + id + "/stop"), seller, null);
+        call(POST("/api/discovery/popups/" + id + "/events"), null, "{\"type\":\"VIEW\"}")
+                .andExpect(status().isNoContent());
+        call(GET("/api/admin/popup-sellers/" + sellerId + "/report"), admin, null)
+                .andExpect(jsonPath("$.total.views").value(3));
+    }
 }

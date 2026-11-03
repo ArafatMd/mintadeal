@@ -48,6 +48,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/discovery/**", "/files/**").permitAll()
                         // Customers see the bill (prices, delivery, options) before they sign in, like any shop.
                         .requestMatchers(HttpMethod.POST, "/api/customer/checkout/quote").permitAll()
+                        // Counting views and taps on pop-up stalls, from customers who may not be signed in.
+                        .requestMatchers(HttpMethod.POST, "/api/discovery/popups/*/events").permitAll()
                         .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**",
                                 "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/admin/**").hasRole(Role.ADMIN.name())

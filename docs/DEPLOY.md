@@ -231,11 +231,13 @@ then `git pull` on the server.
 
 ## Android apps
 
-The Play Store and APK builds need the same API address:
+Publishing on Google Play, the upload key, the reviewers' login and the Data safety answers are in
+[PLAYSTORE.md](PLAYSTORE.md). Every build needs the API address:
 
 ```bash
 cd apps/vendor_app   # or customer_app, delivery_app
-flutter build apk --release --dart-define=API_BASE_URL=https://api.mintadeal.com
+flutter build appbundle --release --dart-define=API_BASE_URL=https://api.mintadeal.com   # for Google Play
+flutter build apk --release --dart-define=API_BASE_URL=https://api.mintadeal.com         # an APK to send yourself
 ```
 
 ## Updating

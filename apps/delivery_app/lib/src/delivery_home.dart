@@ -106,6 +106,8 @@ class _ProfileTab extends ConsumerWidget {
         icon: const Icon(Icons.logout),
         label: const Text('Sign out'),
       ),
+      const SizedBox(height: 8),
+      const DeleteAccountTile(),
     ]);
   }
 }

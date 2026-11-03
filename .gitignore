@@ -28,3 +28,9 @@ deploy/.env
 deploy/backups/
 deploy/osrm/
 deploy/web/
+
+# Play Store upload key and its passwords. Never commit these.
+android-keys/
+*.jks
+*.keystore
+**/key.properties

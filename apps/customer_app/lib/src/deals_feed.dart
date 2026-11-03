@@ -11,6 +11,7 @@ import 'cart_button.dart';
 import 'category_style.dart';
 import 'listing_detail_screen.dart';
 import 'product_tile.dart';
+import 'popups.dart';
 import 'promo_banners.dart';
 import 'shop_card_tile.dart';
 import 'storefront_screen.dart';
@@ -179,6 +180,7 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
         const SizedBox(height: 4),
         PromoCarousel(key: ValueKey((_nearby, admin.length)), slides: slides),
       ],
+      if (_nearby && _type == null) PopupRow(at: area.point),
       const SizedBox(height: 14),
       _TypeRow(type: _type, onType: (t) => setState(() => _type = t), onFilters: _openFilters),
       Padding(

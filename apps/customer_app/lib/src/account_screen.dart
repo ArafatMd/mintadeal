@@ -58,6 +58,7 @@ class AccountScreen extends ConsumerWidget {
               title: const Text('Sign out'),
               onTap: () => ref.read(sessionProvider.notifier).signOut(),
             ),
+            const DeleteAccountTile(),
           ],
         ],
       ),

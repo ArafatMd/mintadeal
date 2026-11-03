@@ -11,6 +11,7 @@ working from end to end rather than an API nobody calls.
 | **4. Venue QR and delivery** | Single-use QR for venue offers; delivery jobs; partner booking with cost shown to the shop; cost recovery ledger | QR in order, live delivery status | Scan QR, request delivery partner | Job list, pickup, proof of delivery, status updates | Delivery jobs, assign or cancel riders, shop dues | Done |
 | **5. Payments and payouts** | Commission, double-entry ledger, payout batches (RazorpayX or manual), refund retries, WhatsApp order alerts | UPI prepay, refunds | Earnings and payouts | | Money overview, commission rates, payouts, failed refunds, message log | Done |
 | **6. Pilot hardening** | Ratings and reviews, help requests, rate limiting, admin and shop stats, API health check, restore drill | Rate orders, ratings on shops, help | Performance stats, reviews and replies, help | Help | Overview, support queue, review moderation | Done |
+| **7. Pop-up stalls and Play Store** | Pop-up stalls (one live stall per seller, chosen days, banned items, reports hide a stall, block sellers, history kept), account deletion, reviewers' test login | Pop-up stalls near you, stall page with call, WhatsApp, directions and report; delete account | Pop-up stall mode in English, Kannada and Hindi; delete account | Delete account | Pop-ups page, reported stalls on the overview | Done |
 
 ## Decisions taken in Stages 1-2
 

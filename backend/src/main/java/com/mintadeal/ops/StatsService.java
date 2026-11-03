@@ -65,7 +65,11 @@ public class StatsService {
                         Timestamp.from(now.minusSeconds(86_400))),
                 count("select count(*) from refund where status = 'FAILED'"),
                 count("select count(*) from payout where status = 'FAILED'"),
-                count("select count(*) from vendor where status = 'PENDING'"));
+                count("select count(*) from vendor where status = 'PENDING'"),
+                // Stalls customers reported that are still live, or were hidden by reports and wait for a decision.
+                count("select count(distinct p.id) from popup p join popup_report r on r.popup_id = p.id "
+                        + "where (p.removed_at is null and p.stopped_at is null and p.ends_at > ?) "
+                        + "or p.removed_reason like 'Hidden after%'", Timestamp.from(now)));
         return new AdminOverview(ordersToday, completedToday, cancelledToday, valueToday, week,
                 count("select count(*) from vendor where status = 'APPROVED'"),
                 count("select count(*) from user_role where role = 'CUSTOMER'"),

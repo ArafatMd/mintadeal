@@ -8,6 +8,7 @@ import 'listings_tab.dart';
 import 'scan_screen.dart';
 import 'order_alerts.dart';
 import 'performance_screens.dart';
+import 'popup/popup_screens.dart';
 import 'orders_tab.dart';
 import 'providers.dart';
 import 'shop_form_screen.dart';
@@ -23,10 +24,25 @@ class VendorHome extends ConsumerWidget {
       value: shop,
       onRetry: () => ref.invalidate(myShopProvider),
       data: (shop) => switch (shop?.status) {
-        null => const ShopFormScreen(existing: null),
+        null => const _NoShopYet(),
         VendorStatus.APPROVED => _Dashboard(shop: shop!),
         _ => _ReviewStatusScreen(shop: shop!),
       },
+    );
+  }
+}
+
+/// Without a shop: a pop-up seller sees their stall; anyone else chooses a shop or a stall.
+class _NoShopYet extends ConsumerWidget {
+  const _NoShopYet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final me = ref.watch(popupMeProvider);
+    return AsyncView(
+      value: me,
+      onRetry: () => ref.invalidate(popupMeProvider),
+      data: (me) => me.name == null ? StartChoiceScreen(me: me) : PopupHome(me: me),
     );
   }
 }
@@ -255,6 +271,7 @@ class _ShopTab extends ConsumerWidget {
                       TicketTopic.ACCOUNT, TicketTopic.OTHER,
                     ]))),
           ),
+          const DeleteAccountTile(),
           const Divider(),
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 4, 16, 16),

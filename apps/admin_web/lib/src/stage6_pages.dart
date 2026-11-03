@@ -25,6 +25,7 @@ class OverviewPage extends ConsumerWidget {
         final attention = [
           (o.openTickets, 'Help requests waiting', Icons.support_agent_outlined, 'Support'),
           (o.shopsWaitingForReview, 'Shops waiting for review', Icons.storefront_outlined, 'Vendors'),
+          (o.reportedPopups, 'Pop-up stalls reported', Icons.flag_outlined, 'Pop-ups'),
           (o.ordersWaitingForShop, 'Orders waiting for a shop', Icons.hourglass_top, 'Orders'),
           (o.jobsWaitingForRider, 'Deliveries without a rider', Icons.delivery_dining_outlined, 'Delivery'),
           (o.failedRefunds, 'Refunds that failed', Icons.money_off_outlined, 'Money'),

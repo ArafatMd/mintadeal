@@ -15,7 +15,7 @@ public final class StatsDtos {
     /** Things an admin should look at now. */
     public record Attention(long openTickets, long ordersWaitingForShop, long jobsWaitingForRider,
                             long failedNotifications24h, long failedRefunds, long failedPayouts,
-                            long shopsWaitingForReview) {
+                            long shopsWaitingForReview, long reportedPopups) {
     }
 
     /** The admin home: today, the last 7 days, and what needs attention. Days are Indian Standard Time. */

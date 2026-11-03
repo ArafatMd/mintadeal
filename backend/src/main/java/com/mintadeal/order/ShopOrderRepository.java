@@ -25,6 +25,8 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, UUID> {
 
     long countByVendorIdAndStatus(UUID vendorId, OrderStatus status);
 
+    boolean existsByCustomerIdAndStatusIn(UUID customerId, Collection<OrderStatus> statuses);
+
     /** Orders the shop has seen: unpaid online orders never reach the shop. */
     @Query("""
             select o from ShopOrder o

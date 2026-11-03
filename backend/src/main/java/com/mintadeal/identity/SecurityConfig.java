@@ -2,6 +2,7 @@ package com.mintadeal.identity;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -9,16 +10,20 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -26,12 +31,14 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.mintadeal.account.DeletedAccounts;
+
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain api(HttpSecurity http) throws Exception {
+    SecurityFilterChain api(HttpSecurity http, DeletedAccounts deleted) throws Exception {
         http
                 .csrf(csrf -> csrf.disable()) // stateless bearer-token API, no cookies
                 .cors(cors -> { })
@@ -46,17 +53,23 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole(Role.ADMIN.name())
                         .requestMatchers("/api/delivery/**").hasRole(Role.DELIVERY_AGENT.name())
                         .anyRequest().authenticated())
-                .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter())));
+                .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter(deleted))));
         return http.build();
     }
 
-    private static JwtAuthenticationConverter jwtAuthConverter() {
+    /** Reads roles from the token, and refuses tokens of accounts deleted since they were issued. */
+    private static Converter<Jwt, AbstractAuthenticationToken> jwtAuthConverter(DeletedAccounts deleted) {
         JwtGrantedAuthoritiesConverter roles = new JwtGrantedAuthoritiesConverter();
         roles.setAuthoritiesClaimName("roles");
         roles.setAuthorityPrefix("ROLE_");
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(roles);
-        return converter;
+        return jwt -> {
+            if (deleted.contains(UUID.fromString(jwt.getSubject()))) {
+                throw new InvalidBearerTokenException("This account has been deleted");
+            }
+            return converter.convert(jwt);
+        };
     }
 
     @Bean

@@ -42,6 +42,8 @@ public class User {
     @Column(nullable = false)
     private Instant createdAt;
 
+    private Instant deletedAt;
+
     @Version
     private Long version;
 
@@ -105,5 +107,22 @@ public class User {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    /**
+     * Deletes the account at the person's request: personal details go, the phone number is freed for a new account,
+     * and the row stays so orders and payments that must be kept by law still point at it.
+     */
+    public void anonymise(Instant now) {
+        phone = "del-" + id.toString().replace("-", "").substring(0, 16); // fits the column, never a valid number
+        name = null;
+        email = null;
+        avatarUrl = null;
+        roles.clear();
+        deletedAt = now;
     }
 }

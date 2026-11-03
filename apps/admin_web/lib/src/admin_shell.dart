@@ -8,6 +8,7 @@ import 'listings_page.dart';
 import 'money_page.dart';
 import 'notifications_page.dart';
 import 'payouts_page.dart';
+import 'popups_page.dart';
 import 'orders_page.dart';
 import 'settings_page.dart';
 import 'stage6_pages.dart';
@@ -34,6 +35,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     (Icons.payments_outlined, Icons.payments, 'Payouts'),
     (Icons.sell_outlined, Icons.sell, 'Listings'),
     (Icons.star_outline_rounded, Icons.star_rounded, 'Reviews'),
+    (Icons.local_mall_outlined, Icons.local_mall, 'Pop-ups'),
     (Icons.view_carousel_outlined, Icons.view_carousel, 'Banners'),
     (Icons.chat_outlined, Icons.chat, 'Messages'),
     (Icons.settings_outlined, Icons.settings, 'Integrations'),
@@ -54,6 +56,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     'Payouts' => const PayoutsPage(),
     'Listings' => const ListingsPage(),
     'Reviews' => const ReviewsPage(),
+    'Pop-ups' => const PopupsPage(),
     'Banners' => const BannersPage(),
     'Messages' => const NotificationsPage(),
     'Integrations' => const SettingsPage(),

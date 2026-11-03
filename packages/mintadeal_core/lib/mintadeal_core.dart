@@ -10,6 +10,8 @@ export 'src/models/enums.dart';
 export 'src/models/finance.dart';
 export 'src/models/models.dart';
 export 'src/models/orders.dart';
+export 'src/models/popups.dart';
+export 'src/ui/account.dart';
 export 'src/models/stage6.dart';
 export 'src/ui/async_view.dart';
 export 'src/ui/image_field.dart';

@@ -1,7 +1,18 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// The Play Store upload key, kept outside git in <repo>/android-keys (see docs/PLAYSTORE.md). Without it, release
+// builds are signed with the debug key, which is fine for testing but rejected by Google Play.
+val keysDir = rootProject.file("../../../android-keys")
+val keyPropertiesFile = File(keysDir, "key.properties")
+val keyProperties = Properties().apply {
+    if (keyPropertiesFile.exists()) FileInputStream(keyPropertiesFile).use { load(it) }
 }
 
 android {
@@ -15,8 +26,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.mintadeal.mintadeal_customer"
+        // Permanent once the app is on Google Play.
+        applicationId = "com.mintadeal.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -29,11 +40,25 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            if (keyPropertiesFile.exists()) {
+                storeFile = File(keysDir, keyProperties.getProperty("storeFile"))
+                storePassword = keyProperties.getProperty("storePassword")
+                keyAlias = keyProperties.getProperty("keyAlias")
+                keyPassword = keyProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (keyPropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn("android-keys/key.properties not found: signing com.mintadeal.app with the debug key.")
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

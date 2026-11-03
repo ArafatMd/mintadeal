@@ -17,6 +17,8 @@ public interface DeliveryJobRepository extends JpaRepository<DeliveryJob, UUID> 
 
     List<DeliveryJob> findByStatusOrderByRequestedAt(JobStatus status);
 
+    boolean existsByAgentIdAndStatusIn(UUID agentId, Collection<JobStatus> statuses);
+
     Page<DeliveryJob> findByAgentIdAndStatusInOrderByRequestedAtDesc(UUID agentId, Collection<JobStatus> statuses,
                                                                      Pageable pageable);
 

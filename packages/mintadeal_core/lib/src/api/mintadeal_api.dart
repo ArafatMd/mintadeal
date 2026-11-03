@@ -4,6 +4,7 @@ import '../models/enums.dart';
 import '../models/finance.dart';
 import '../models/models.dart';
 import '../models/orders.dart';
+import '../models/popups.dart';
 import '../models/stage6.dart';
 import 'api_client.dart';
 
@@ -49,6 +50,69 @@ class MintadealApi {
       await client.patch('/api/me', {'name': name, 'email': email, 'avatarUrl': avatarUrl}) as Json);
 
   Future<String> uploadImage(Uint8List bytes, String filename) => client.uploadImage(bytes, filename);
+
+  /// Deletes the signed-in account, or for a shop owner asks Mintadeal to. Returns (deleted, message).
+  Future<(bool, String)> deleteAccount() async {
+    final j = await client.delete('/api/me') as Json;
+    return (j['deleted'] as bool? ?? false, j['message'] as String? ?? '');
+  }
+
+  // --- Pop-up stalls ---
+
+  Future<PopupMe> popupMe() async => PopupMe.fromJson(await client.get('/api/popup/me') as Json);
+
+  Future<PopupMe> renamePopupSeller(String name) async =>
+      PopupMe.fromJson(await client.put('/api/popup/me', {'name': name}) as Json);
+
+  Future<PopupMe> startPopup({String? name, required List<PopupItem> items, required GeoPoint at, required int days}) async =>
+      PopupMe.fromJson(await client.post('/api/popup/stalls', {
+        'name': name,
+        'items': [for (final i in items) i.toJson()],
+        'latitude': at.lat,
+        'longitude': at.lng,
+        'days': days,
+      }) as Json);
+
+  Future<PopupMe> popupAgain(String fromId, {required GeoPoint at, required int days}) async =>
+      PopupMe.fromJson(await client.post('/api/popup/stalls/$fromId/again',
+          {'latitude': at.lat, 'longitude': at.lng, 'days': days}) as Json);
+
+  Future<PopupMe> movePopup(String id, GeoPoint at) async => PopupMe.fromJson(
+      await client.post('/api/popup/stalls/$id/move', {'latitude': at.lat, 'longitude': at.lng}) as Json);
+
+  Future<PopupMe> stopPopup(String id) async =>
+      PopupMe.fromJson(await client.post('/api/popup/stalls/$id/stop') as Json);
+
+  Future<List<PublicPopup>> nearbyPopups(GeoPoint at) async => [
+        for (final p in await client.get('/api/discovery/popups', query: {'lat': at.lat, 'lng': at.lng}) as List)
+          PublicPopup.fromJson(p as Json),
+      ];
+
+  Future<PublicPopup> popup(String id, {GeoPoint? at}) async => PublicPopup.fromJson(await client.get(
+      '/api/discovery/popups/$id', query: {if (at != null) 'lat': at.lat, if (at != null) 'lng': at.lng}) as Json);
+
+  Future<void> reportPopup(String id, PopupReportReason reason, {String? note}) =>
+      client.post('/api/popup/stalls/$id/report', {'reason': reason.name, 'note': note});
+
+  Future<PageResult<AdminPopup>> adminPopups({PopupFilter? filter, String? sellerId, int page = 0}) async =>
+      PageResult.fromJson(
+          await client.get('/api/admin/popups', query: {
+            if (filter != null) 'filter': filter.name,
+            'sellerId': ?sellerId,
+            'page': page,
+          }) as Json,
+          AdminPopup.fromJson);
+
+  Future<AdminPopup> removePopup(String id, String reason) async =>
+      AdminPopup.fromJson(await client.post('/api/admin/popups/$id/remove', {'reason': reason}) as Json);
+
+  Future<AdminPopup> restorePopup(String id) async =>
+      AdminPopup.fromJson(await client.post('/api/admin/popups/$id/restore') as Json);
+
+  Future<void> blockPopupSeller(String userId, String reason) =>
+      client.post('/api/admin/popup-sellers/$userId/block', {'reason': reason});
+
+  Future<void> unblockPopupSeller(String userId) => client.post('/api/admin/popup-sellers/$userId/unblock');
 
   // --- Discovery (customer) ---
 

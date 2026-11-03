@@ -8,8 +8,9 @@ import '../models/models.dart';
 import 'widgets.dart';
 
 /// Lets the user choose a photo from the gallery, uploads it and returns its URL, or null if they cancelled.
-Future<String?> pickAndUploadImage(BuildContext context, WidgetRef ref, {double maxWidth = 1600}) async {
-  final file = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: maxWidth, imageQuality: 85);
+Future<String?> pickAndUploadImage(BuildContext context, WidgetRef ref,
+    {double maxWidth = 1600, ImageSource source = ImageSource.gallery}) async {
+  final file = await ImagePicker().pickImage(source: source, maxWidth: maxWidth, imageQuality: 85);
   if (file == null) return null;
   return ref.read(apiProvider).uploadImage(await file.readAsBytes(), file.name);
 }

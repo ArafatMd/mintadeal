@@ -45,6 +45,9 @@ mintadeal:
     max-per-hour: 5
     pepper: ${OTP_PEPPER:dev-only-pepper-change-me}
     dev-fixed-code: ${OTP_DEV_FIXED_CODE:}
+    # App store reviewers' test numbers and their fixed code (docs/PLAYSTORE.md). Leave empty otherwise.
+    review-phones: ${REVIEW_PHONES:}
+    review-code: ${REVIEW_CODE:}
   bootstrap:
     admin-phones: ${ADMIN_PHONES:}
   orders:
@@ -62,6 +65,14 @@ mintadeal:
   discovery:
     nearby-radius-km: 5
     max-search-radius-km: 25
+  popups:
+    # Pop-up stalls (hawkers, street and event sellers). Days a seller can choose; 2 is picked for them.
+    allowed-days: 1,2,3,7
+    default-days: 2
+    nearby-radius-km: 5
+    max-items: 6
+    max-per-day: 3
+    hide-after-reports: 3
   routing:
     # Road distances from a self-hosted OSRM server (see docs/ROUTING.md). Empty: straight-line distances.
     osrm-url: ${OSRM_URL:}

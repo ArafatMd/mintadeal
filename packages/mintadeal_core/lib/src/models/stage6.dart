@@ -149,7 +149,8 @@ class AdminOverview {
         failedNotifications24h = _int((j['attention'] as Json)['failedNotifications24h']),
         failedRefunds = _int((j['attention'] as Json)['failedRefunds']),
         failedPayouts = _int((j['attention'] as Json)['failedPayouts']),
-        shopsWaitingForReview = _int((j['attention'] as Json)['shopsWaitingForReview']);
+        shopsWaitingForReview = _int((j['attention'] as Json)['shopsWaitingForReview']),
+        reportedPopups = _int((j['attention'] as Json)['reportedPopups']);
 
   final int ordersToday;
   final int completedToday;
@@ -164,6 +165,9 @@ class AdminOverview {
   final int jobsWaitingForRider;
   final int failedNotifications24h;
   final int failedRefunds;
+
+  /// Pop-up stalls customers reported that are live or hidden waiting for a decision.
+  final int reportedPopups;
   final int failedPayouts;
   final int shopsWaitingForReview;
 }

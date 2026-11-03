@@ -39,6 +39,9 @@ services:
       SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:?set SETTINGS_ENCRYPTION_KEY}
       ADMIN_PHONES: ${ADMIN_PHONES:?set ADMIN_PHONES}
       OTP_DEV_FIXED_CODE: ${FIRST_SIGNIN_CODE:-}
+      # Google Play reviewers' test number and code (docs/PLAYSTORE.md); empty otherwise.
+      REVIEW_PHONES: ${REVIEW_PHONES:-}
+      REVIEW_CODE: ${REVIEW_CODE:-}
       PUBLIC_BASE_URL: https://api.${DOMAIN:?set DOMAIN}
       CORS_ORIGINS: https://app.${DOMAIN},https://shop.${DOMAIN},https://admin.${DOMAIN},https://rider.${DOMAIN}
       TZ: Asia/Kolkata

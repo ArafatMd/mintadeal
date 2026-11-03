@@ -20,13 +20,14 @@ class PopupItem {
 }
 
 // ignore: constant_identifier_names
-enum PopupStatus { LIVE, ENDED, REMOVED }
+enum PopupStatus { PENDING_PAYMENT, LIVE, ENDED, REMOVED }
 
 /// A stall as its seller sees it.
 class MyPopup {
   MyPopup.fromJson(Json j)
       : id = j['id'] as String,
         status = PopupStatus.values.byName(j['status'] as String),
+        name = j['name'] as String? ?? '',
         items = [for (final i in j['items'] as List) PopupItem.fromJson(i as Json)],
         latitude = _double(j['latitude']),
         longitude = _double(j['longitude']),
@@ -34,10 +35,21 @@ class MyPopup {
         startsAt = _date(j['startsAt'])!,
         endsAt = _date(j['endsAt'])!,
         stoppedAt = _date(j['stoppedAt']),
-        removedReason = j['removedReason'] as String?;
+        removedReason = j['removedReason'] as String?,
+        feeMinor = (j['feeMinor'] as num?)?.toInt() ?? 0,
+        paymentUrl = j['paymentUrl'] as String?,
+        paymentDeadline = _date(j['paymentDeadline']);
 
   final String id;
   final PopupStatus status;
+
+  /// This stall's name, which customers see.
+  final String name;
+  final int feeMinor;
+
+  /// Where to pay the fee, while the stall is waiting for it.
+  final String? paymentUrl;
+  final DateTime? paymentDeadline;
   final List<PopupItem> items;
   final double latitude;
   final double longitude;
@@ -57,21 +69,37 @@ class PopupMe {
       : name = j['name'] as String?,
         blocked = j['blocked'] as bool? ?? false,
         blockedReason = j['blockedReason'] as String?,
-        live = j['live'] == null ? null : MyPopup.fromJson(j['live'] as Json),
+        active = [for (final p in j['active'] as List? ?? const []) MyPopup.fromJson(p as Json)],
         history = [for (final p in j['history'] as List? ?? const []) MyPopup.fromJson(p as Json)],
         allowedDays = [for (final d in j['allowedDays'] as List? ?? const [1, 2, 3, 7]) (d as num).toInt()],
         defaultDays = (j['defaultDays'] as num?)?.toInt() ?? 2,
-        maxItems = (j['maxItems'] as num?)?.toInt() ?? 6;
+        maxItems = (j['maxItems'] as num?)?.toInt() ?? 6,
+        maxLive = (j['maxLive'] as num?)?.toInt() ?? 1,
+        feePerDayMinor = (j['feePerDayMinor'] as num?)?.toInt() ?? 0,
+        shopName = j['shopName'] as String?;
 
   /// Null until the person has opened their first stall.
   final String? name;
   final bool blocked;
   final String? blockedReason;
-  final MyPopup? live;
+  /// Stalls live now or waiting for their fee, newest first.
+  final List<MyPopup> active;
   final List<MyPopup> history;
   final List<int> allowedDays;
   final int defaultDays;
   final int maxItems;
+
+  /// How many stalls this seller may run at once.
+  final int maxLive;
+
+  /// The listing fee per day; 0 when free.
+  final int feePerDayMinor;
+
+  /// The seller's approved shop: its stalls show it, and fees come off the shop's balance.
+  final String? shopName;
+
+  bool get isShop => shopName != null;
+  bool get canStartAnother => !blocked && active.length < maxLive;
 }
 
 /// A live stall as customers see it.
@@ -85,10 +113,16 @@ class PublicPopup {
         longitude = _double(j['longitude']),
         distanceKm = (j['distanceKm'] as num?)?.toDouble(),
         startsAt = _date(j['startsAt'])!,
-        endsAt = _date(j['endsAt'])!;
+        endsAt = _date(j['endsAt'])!,
+        vendorId = j['vendorId'] as String?,
+        vendorName = j['vendorName'] as String?;
 
   final String id;
   final String sellerName;
+
+  /// The approved shop running this stall, or null for an independent seller.
+  final String? vendorId;
+  final String? vendorName;
   final String? phone;
   final List<PopupItem> items;
   final double latitude;
@@ -112,7 +146,57 @@ extension PopupReportReasonLabel on PopupReportReason {
 }
 
 // ignore: constant_identifier_names
-enum PopupFilter { LIVE, REPORTED, ENDED, REMOVED }
+enum PopupFilter { LIVE, REPORTED, SHOPS, ENDED, REMOVED }
+
+/// The master controls for pop-up stalls.
+class PopupSettings {
+  const PopupSettings({
+    required this.shopMaxLive,
+    required this.shopFeePerDayMinor,
+    required this.sellerMaxLive,
+    required this.sellerFeePerDayMinor,
+  });
+
+  PopupSettings.fromJson(Json j)
+      : shopMaxLive = (j['shopMaxLive'] as num).toInt(),
+        shopFeePerDayMinor = (j['shopFeePerDayMinor'] as num).toInt(),
+        sellerMaxLive = (j['sellerMaxLive'] as num).toInt(),
+        sellerFeePerDayMinor = (j['sellerFeePerDayMinor'] as num).toInt();
+
+  final int shopMaxLive;
+  final int shopFeePerDayMinor;
+  final int sellerMaxLive;
+  final int sellerFeePerDayMinor;
+
+  Json toJson() => {
+        'shopMaxLive': shopMaxLive,
+        'shopFeePerDayMinor': shopFeePerDayMinor,
+        'sellerMaxLive': sellerMaxLive,
+        'sellerFeePerDayMinor': sellerFeePerDayMinor,
+      };
+}
+
+/// One seller's limits: an admin's choice (null = default) and what applies.
+class SellerLimits {
+  SellerLimits.fromJson(Json j)
+      : userId = j['userId'] as String,
+        name = j['name'] as String?,
+        phone = j['phone'] as String?,
+        shopName = j['shopName'] as String?,
+        maxLive = (j['maxLive'] as num?)?.toInt(),
+        feePerDayMinor = (j['feePerDayMinor'] as num?)?.toInt(),
+        effectiveMaxLive = (j['effectiveMaxLive'] as num).toInt(),
+        effectiveFeePerDayMinor = (j['effectiveFeePerDayMinor'] as num).toInt();
+
+  final String userId;
+  final String? name;
+  final String? phone;
+  final String? shopName;
+  final int? maxLive;
+  final int? feePerDayMinor;
+  final int effectiveMaxLive;
+  final int effectiveFeePerDayMinor;
+}
 
 class PopupReportEntry {
   PopupReportEntry.fromJson(Json j)
@@ -145,7 +229,12 @@ class AdminPopup {
         removedReason = j['removedReason'] as String?,
         movedAt = _date(j['movedAt']),
         reportCount = (j['reportCount'] as num?)?.toInt() ?? 0,
-        reports = [for (final r in j['reports'] as List? ?? const []) PopupReportEntry.fromJson(r as Json)];
+        reports = [for (final r in j['reports'] as List? ?? const []) PopupReportEntry.fromJson(r as Json)],
+        vendorId = j['vendorId'] as String?,
+        vendorName = j['vendorName'] as String?,
+        feeMinor = (j['feeMinor'] as num?)?.toInt() ?? 0,
+        paymentProvider = j['paymentProvider'] as String?,
+        paidAt = _date(j['paidAt']);
 
   final String id;
   final String sellerId;
@@ -165,4 +254,11 @@ class AdminPopup {
   final DateTime? movedAt;
   final int reportCount;
   final List<PopupReportEntry> reports;
+  final String? vendorId;
+  final String? vendorName;
+  final int feeMinor;
+
+  /// SHOP_BALANCE when taken from the shop's balance, else the online provider.
+  final String? paymentProvider;
+  final DateTime? paidAt;
 }

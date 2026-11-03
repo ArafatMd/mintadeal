@@ -250,6 +250,18 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env up -d --
 If the apps changed, run `deploy/build-web.sh` again from your computer. The website needs only the `git pull`. Database migrations run on API start.
 The API is unavailable for about 30 seconds while it restarts.
 
+## Pop-up stalls: limits and fees
+
+In the admin website, **Pop-ups, Defaults** sets how many stalls a seller can run at once and the fee per day,
+separately for approved shops and for other sellers (both start at 1 stall, free). **Limits and fee** on a stall,
+or on a shop's page under Vendors, overrides them for one seller.
+
+- Shops' fees come off their Mintadeal balance, so they are deducted from the next payout.
+- Other sellers pay online before their stall appears, which needs Razorpay switched on in Integrations. Until it
+  is, keep their fee at 0: with a fee and no Razorpay, they cannot open a stall.
+- Fees are not refunded automatically when you take a paid stall down. Refund from the Razorpay dashboard if you
+  decide to.
+
 ## Road distances (optional)
 
 Distances are approximate straight-line ones until you set up the routing server. It adds road distance and

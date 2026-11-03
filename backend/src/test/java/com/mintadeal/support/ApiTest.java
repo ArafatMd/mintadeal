@@ -50,6 +50,8 @@ public abstract class ApiTest {
                 TRUNCATE popup_report, popup_item, popup, popup_seller, support_message, support_ticket, vendor_review, home_banner, notification, ledger_entry, ledger_journal, payout, payout_batch, commission_rule, vendor_charge, delivery_job, redemption, refund, order_event, order_line, shop_order, checkout, integration_setting,
                          audit_event, vendor_follow, listing_fulfilment_mode, listing, vendor,
                          otp_challenge, user_role, app_user CASCADE""");
+        jdbc.update("update popup_settings set shop_max_live = 1, shop_fee_per_day_minor = 0, seller_max_live = 1, "
+                + "seller_fee_per_day_minor = 0");
     }
 
     protected String login(String phone) throws Exception {

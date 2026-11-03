@@ -2,6 +2,7 @@ package com.mintadeal.order;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,9 +29,11 @@ public class RazorpayWebhookController {
     private final CheckoutRepository checkouts;
     private final ObjectMapper json;
     private final PayoutService payouts;
+    private final ApplicationEventPublisher events;
 
     public RazorpayWebhookController(RazorpayClient razorpay, PaymentService payments, CheckoutRepository checkouts,
-                                     ObjectMapper json, PayoutService payouts) {
+                                     ObjectMapper json, PayoutService payouts, ApplicationEventPublisher events) {
+        this.events = events;
         this.payouts = payouts;
         this.razorpay = razorpay;
         this.payments = payments;
@@ -59,8 +62,14 @@ public class RazorpayWebhookController {
             return ResponseEntity.ok().build();
         }
         switch (type) {
-            case "payment_link.paid" -> payments.confirmPaidByReference(linkId,
-                    event.path("payload").path("payment").path("entity").path("id").asString(null));
+            case "payment_link.paid" -> {
+                String paymentId = event.path("payload").path("payment").path("entity").path("id").asString(null);
+                if (checkouts.findByPaymentReference(linkId).isPresent()) {
+                    payments.confirmPaidByReference(linkId, paymentId);
+                } else {
+                    events.publishEvent(new PaymentLinkPaidEvent(linkId, paymentId));
+                }
+            }
             case "payment_link.expired", "payment_link.cancelled" ->
                     checkouts.findByPaymentReference(linkId).ifPresent(c -> payments.refresh(c.getId()));
             default -> log.debug("Ignoring Razorpay event {}", type);

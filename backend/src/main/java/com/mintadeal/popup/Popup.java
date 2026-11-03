@@ -24,8 +24,14 @@ import jakarta.persistence.Version;
 @Table(name = "popup")
 public class Popup {
 
-    /** LIVE: customers can see it. ENDED: its days ran out or the seller stopped it. REMOVED: taken down. */
-    public enum Status { LIVE, ENDED, REMOVED }
+    /**
+     * PENDING_PAYMENT: waiting for the seller to pay the listing fee. LIVE: customers can see it. ENDED: its days ran
+     * out, the seller stopped it, or the fee was never paid. REMOVED: taken down.
+     */
+    public enum Status { PENDING_PAYMENT, LIVE, ENDED, REMOVED }
+
+    /** How a fee was paid when it was not paid online. */
+    static final String SHOP_BALANCE = "SHOP_BALANCE";
 
     @Id
     private UUID id;
@@ -59,6 +65,24 @@ public class Popup {
     @Column(nullable = false)
     private Instant createdAt;
 
+    private UUID vendorId;
+
+    private String vendorName;
+
+    private long feeMinor;
+
+    private String paymentProvider;
+
+    private String paymentReference;
+
+    private String paymentUrl;
+
+    private String paymentId;
+
+    private Instant paymentDeadline;
+
+    private Instant paidAt;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "popup_item", joinColumns = @JoinColumn(name = "popup_id"))
     @OrderColumn(name = "position")
@@ -88,7 +112,40 @@ public class Popup {
         if (removedAt != null) {
             return Status.REMOVED;
         }
+        if (feeMinor > 0 && paidAt == null) {
+            return stoppedAt == null && paymentDeadline != null && paymentDeadline.isAfter(now)
+                    ? Status.PENDING_PAYMENT : Status.ENDED;
+        }
         return stoppedAt == null && endsAt.isAfter(now) ? Status.LIVE : Status.ENDED;
+    }
+
+    void fromShop(UUID vendorId, String vendorName) {
+        this.vendorId = vendorId;
+        this.vendorName = vendorName;
+    }
+
+    /** A fee to pay online before the stall goes live. */
+    void awaitPayment(long feeMinor, String provider, String reference, String url, Instant deadline) {
+        this.feeMinor = feeMinor;
+        this.paymentProvider = provider;
+        this.paymentReference = reference;
+        this.paymentUrl = url;
+        this.paymentDeadline = deadline;
+    }
+
+    /** A fee taken from the shop's balance: the stall is live at once. */
+    void chargedToShop(long feeMinor, Instant now) {
+        this.feeMinor = feeMinor;
+        this.paymentProvider = SHOP_BALANCE;
+        this.paidAt = now;
+    }
+
+    /** The online payment arrived: the chosen days start now. */
+    void paid(String paymentId, Instant now) {
+        this.paymentId = paymentId;
+        this.paidAt = now;
+        this.startsAt = now;
+        this.endsAt = now.plus(java.time.Duration.ofDays(days));
     }
 
     void moveTo(double lat, double lng, Instant now) {
@@ -161,6 +218,38 @@ public class Popup {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public UUID getVendorId() {
+        return vendorId;
+    }
+
+    public String getVendorName() {
+        return vendorName;
+    }
+
+    public long getFeeMinor() {
+        return feeMinor;
+    }
+
+    public String getPaymentProvider() {
+        return paymentProvider;
+    }
+
+    public String getPaymentReference() {
+        return paymentReference;
+    }
+
+    public String getPaymentUrl() {
+        return paymentUrl;
+    }
+
+    public Instant getPaymentDeadline() {
+        return paymentDeadline;
+    }
+
+    public Instant getPaidAt() {
+        return paidAt;
     }
 
     public List<PopupItem> getItems() {

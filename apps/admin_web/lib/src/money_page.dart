@@ -51,6 +51,7 @@ class MoneyPage extends ConsumerWidget {
             _Tile('Payouts on the way', s.payoutsInTransitMinor, '${s.pendingPayouts} payouts pending or processing'),
             _Tile('Commission earned', s.commissionRevenueMinor, 'On completed orders'),
             _Tile('Delivery charges recovered', s.deliveryRecoveryMinor, 'Partner delivery fees charged to shops'),
+            _Tile('Pop-up stall fees', s.popupFeesMinor, 'Listing fees for pop-up stalls'),
           ]),
           const SizedBox(height: 8),
           Row(children: [

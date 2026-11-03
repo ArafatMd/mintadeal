@@ -11,5 +11,7 @@ public enum Account {
     VENDOR_PAYABLE,
     COMMISSION_REVENUE,
     DELIVERY_RECOVERY,
+    /** Listing fees for pop-up stalls. */
+    POPUP_FEE_REVENUE,
     PAYOUTS_IN_TRANSIT
 }

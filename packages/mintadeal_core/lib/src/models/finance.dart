@@ -74,6 +74,7 @@ class FinanceSummary {
         payoutsInTransitMinor = _int(j['payoutsInTransitMinor']),
         commissionRevenueMinor = _int(j['commissionRevenueMinor']),
         deliveryRecoveryMinor = _int(j['deliveryRecoveryMinor']),
+        popupFeesMinor = _int(j['popupFeesMinor']),
         balanced = j['balanced'] as bool,
         pendingPayoutsMinor = _int(j['pendingPayoutsMinor']),
         pendingPayouts = _int(j['pendingPayouts']),
@@ -86,6 +87,9 @@ class FinanceSummary {
   final int payoutsInTransitMinor;
   final int commissionRevenueMinor;
   final int deliveryRecoveryMinor;
+
+  /// Pop-up stall listing fees earned.
+  final int popupFeesMinor;
   final bool balanced;
   final int pendingPayoutsMinor;
   final int pendingPayouts;

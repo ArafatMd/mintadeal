@@ -5,6 +5,7 @@ import 'package:mintadeal_core/mintadeal_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'dialogs.dart';
+import 'popups_page.dart';
 
 final _vendorDetail = FutureProvider.autoDispose.family<VendorDetail, String>(
     (ref, id) => ref.watch(apiProvider).adminVendor(id));
@@ -165,6 +166,18 @@ class _VendorDetailPageState extends ConsumerState<VendorDetailPage> {
         ),
         const SizedBox(height: 16),
         _ShopOnMap(json: j),
+        const SizedBox(height: 16),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.local_mall_outlined),
+            title: const Text('Pop-up stalls'),
+            subtitle: const Text('How many stalls this shop may run at once, and its fee per day'),
+            trailing: OutlinedButton(
+              onPressed: () => editSellerLimits(context, ref, j['ownerUserId'] as String),
+              child: const Text('Limits and fee'),
+            ),
+          ),
+        ),
         const SizedBox(height: 16),
         Consumer(builder: (context, ref, _) {
           final charges = ref.watch(_vendorCharges(v.id)).value;

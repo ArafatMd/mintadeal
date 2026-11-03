@@ -45,6 +45,7 @@ public final class FinanceDtos {
     /** Ledger totals. {@code balanced} is false only if a journal was ever posted out of balance. */
     public record Summary(long gatewayMinor, long customerPrepaidMinor, long owedToShopsMinor, long owedByShopsMinor,
                           long payoutsInTransitMinor, long commissionRevenueMinor, long deliveryRecoveryMinor,
+                          long popupFeesMinor,
                           boolean balanced, long pendingPayoutsMinor, int pendingPayouts, int failedRefunds) {
     }
 

@@ -32,6 +32,14 @@ class RazorpayGateway implements PaymentGateway {
     }
 
     @Override
+    public Link createLink(long amountMinor, String referenceId, String description, String name, String phone,
+                           Instant deadline, Map<String, String> notes) {
+        RazorpayClient.PaymentLink link = razorpay.createPaymentLink(amountMinor, referenceId, description, name, phone,
+                deadline.getEpochSecond(), notes);
+        return new Link(link.id(), link.shortUrl());
+    }
+
+    @Override
     public Status fetch(String reference) {
         RazorpayClient.LinkStatus s = razorpay.fetchPaymentLink(reference);
         return new Status(s.paid(), s.closed(), s.paymentId());

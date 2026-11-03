@@ -18,11 +18,25 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
+
 import com.mintadeal.admin.AuditService;
 import com.mintadeal.common.ApiException;
 import com.mintadeal.common.Geo;
 import com.mintadeal.common.PageResponse;
 import com.mintadeal.files.FileProperties;
+import com.mintadeal.finance.Bookkeeping;
+import com.mintadeal.order.PaymentGateway;
+import com.mintadeal.order.PaymentGateways;
+import com.mintadeal.order.PaymentLinkPaidEvent;
+import com.mintadeal.popup.PopupDtos.LimitsRequest;
+import com.mintadeal.popup.PopupDtos.SellerLimits;
+import com.mintadeal.popup.PopupDtos.SettingsDto;
+import com.mintadeal.vendor.Vendor;
+import com.mintadeal.vendor.VendorRepository;
+import com.mintadeal.identity.User;
 import com.mintadeal.identity.UserRepository;
 import com.mintadeal.popup.Popup.Status;
 import com.mintadeal.popup.PopupDtos.AdminPopup;
@@ -35,12 +49,19 @@ import com.mintadeal.popup.PopupDtos.ReportRequest;
 import com.mintadeal.popup.PopupDtos.StartRequest;
 
 /**
- * Pop-up stalls. A seller has at most one live stall, at one place, for the days they chose; when it ends customers
- * stop seeing it and it stays as history. Stalls go live straight away, so the rules are checked up front and
- * customers' reports hide a stall until an admin looks at it.
+ * Pop-up stalls. A seller runs as many stalls at once as their limit allows (one by default), each at one place for
+ * the days they chose; when a stall ends customers stop seeing it and it stays as history. Stalls go live straight
+ * away, so the rules are checked up front and customers' reports hide a stall until an admin looks at it.
+ *
+ * <p>Approved shops can run stalls too: the stall shows the shop, and any listing fee comes off the shop's balance.
+ * Other sellers pay the fee online before the stall goes live.
  */
 @Service
 public class PopupService {
+
+    private static final Logger log = LoggerFactory.getLogger(PopupService.class);
+    /** How long a seller has to pay the fee before the stall is dropped. Razorpay needs at least 15 minutes. */
+    private static final Duration PAYMENT_WINDOW = Duration.ofMinutes(30);
 
     private final PopupSellerRepository sellers;
     private final PopupRepository popups;
@@ -49,11 +70,20 @@ public class PopupService {
     private final PopupProperties props;
     private final AuditService audit;
     private final String filesBase;
+    private final PopupSettingsRepository settings;
+    private final VendorRepository vendors;
+    private final PaymentGateways gateways;
+    private final Bookkeeping bookkeeping;
     private final Clock clock;
 
     public PopupService(PopupSellerRepository sellers, PopupRepository popups, PopupReportRepository reports,
                         UserRepository users, PopupProperties props, AuditService audit, FileProperties files,
-                        Clock clock) {
+                        PopupSettingsRepository settings, VendorRepository vendors, PaymentGateways gateways,
+                        Bookkeeping bookkeeping, Clock clock) {
+        this.settings = settings;
+        this.vendors = vendors;
+        this.gateways = gateways;
+        this.bookkeeping = bookkeeping;
         this.filesBase = files.publicBaseUrl() + "/files/";
         this.sellers = sellers;
         this.popups = popups;
@@ -71,13 +101,15 @@ public class PopupService {
         Instant now = clock.instant();
         PopupSeller seller = sellers.findById(userId).orElse(null);
         List<Popup> recent = popups.findTop20BySellerIdOrderByCreatedAtDesc(userId);
-        MyPopup live = recent.stream().filter(p -> p.status(now) == Status.LIVE).findFirst()
-                .map(p -> MyPopup.of(p, now)).orElse(null);
-        List<MyPopup> history = recent.stream().filter(p -> p.status(now) != Status.LIVE)
+        List<MyPopup> active = recent.stream().filter(p -> isActive(p, now)).map(p -> MyPopup.of(p, now)).toList();
+        List<MyPopup> history = recent.stream().filter(p -> !isActive(p, now))
+                .filter(p -> p.getFeeMinor() == 0 || p.getPaidAt() != null)
                 .map(p -> MyPopup.of(p, now)).toList();
+        Vendor shop = shopOf(userId);
         return new Me(seller == null ? null : seller.getName(), seller != null && seller.isBlocked(),
-                seller == null ? null : seller.getBlockedReason(), live, history, props.allowedDays(),
-                props.defaultDays(), props.maxItems());
+                seller == null ? null : seller.getBlockedReason(), active, history, props.allowedDays(),
+                props.defaultDays(), props.maxItems(), maxLive(seller, shop), feePerDay(seller, shop),
+                shop == null ? null : shop.getDisplayName());
     }
 
     @Transactional
@@ -91,28 +123,60 @@ public class PopupService {
     public Me start(UUID userId, StartRequest r) {
         Instant now = clock.instant();
         PopupSeller seller = sellers.findById(userId).orElse(null);
+        Vendor shop = shopOf(userId);
         if (seller == null) {
-            if (r.name() == null || r.name().isBlank()) {
+            String name = r.name() != null && !r.name().isBlank() ? r.name()
+                    : shop != null ? shop.getDisplayName() : null;
+            if (name == null) {
                 throw ApiException.badRequest("name_required", "Tell customers your name or your stall's name");
             }
-            seller = sellers.save(new PopupSeller(userId, checkedName(r.name()), now));
+            seller = sellers.save(new PopupSeller(userId, checkedName(name), now));
         } else if (r.name() != null && !r.name().isBlank()) {
             seller.setName(checkedName(r.name()));
         }
         List<PopupItem> items = checkedItems(r.items());
-        open(seller, items, r.latitude(), r.longitude(), r.days(), now);
+        open(seller, shop, stallName(r.stallName(), seller), items, r.latitude(), r.longitude(), r.days(), now);
         return me(userId);
     }
 
     @Transactional
-    public Me again(UUID userId, UUID fromId, double lat, double lng, int days) {
+    public Me again(UUID userId, UUID fromId, double lat, double lng, int days, String stallName) {
         Popup from = own(userId, fromId);
         if (from.getRemovedAt() != null) {
             throw ApiException.conflict("popup_removed", "Mintadeal took this stall down. Start a new one.");
         }
         PopupSeller seller = sellers.findById(userId).orElseThrow();
-        open(seller, List.copyOf(from.getItems()), lat, lng, days, clock.instant());
+        String name = stallName != null && !stallName.isBlank() ? checkedName(stallName) : from.getSellerName();
+        open(seller, shopOf(userId), name, List.copyOf(from.getItems()), lat, lng, days, clock.instant());
         return me(userId);
+    }
+
+    /** Asks the payment provider whether the stall's fee was paid, for when the seller comes back from paying. */
+    @Transactional
+    public Me checkPayment(UUID userId, UUID popupId) {
+        Popup p = own(userId, popupId);
+        if (p.status(clock.instant()) == Status.PENDING_PAYMENT) {
+            PaymentGateway.Status st = gateways.named(p.getPaymentProvider()).fetch(p.getPaymentReference());
+            if (st.paid()) {
+                markPaid(p, st.paymentId());
+            }
+        }
+        return me(userId);
+    }
+
+    @EventListener
+    @Transactional
+    public void onLinkPaid(PaymentLinkPaidEvent e) {
+        popups.findByPaymentReference(e.reference()).ifPresent(p -> markPaid(p, e.paymentId()));
+    }
+
+    private void markPaid(Popup p, String paymentId) {
+        if (p.getPaidAt() != null || p.getRemovedAt() != null) {
+            return;
+        }
+        p.paid(paymentId, clock.instant());
+        bookkeeping.popupFeePaid(p.getId(), "Pop-up stall fee: " + p.getSellerName(), p.getFeeMinor());
+        log.info("Pop-up stall {} paid; live for {} days", p.getId(), p.getDays());
     }
 
     @Transactional
@@ -123,25 +187,50 @@ public class PopupService {
         return me(userId);
     }
 
+    /** Stops a live stall, or drops one still waiting for its fee. */
     @Transactional
     public Me stop(UUID userId, UUID popupId) {
-        ownLive(userId, popupId).stop(clock.instant());
+        Popup p = own(userId, popupId);
+        Status status = p.status(clock.instant());
+        if (status != Status.LIVE && status != Status.PENDING_PAYMENT) {
+            throw ApiException.conflict("popup_not_live", "This stall has already ended");
+        }
+        if (status == Status.PENDING_PAYMENT) {
+            try {
+                gateways.named(p.getPaymentProvider()).cancel(p.getPaymentReference());
+            } catch (RuntimeException e) {
+                log.warn("Could not cancel the payment link of stall {}: {}", p.getId(), e.getMessage());
+            }
+        }
+        p.stop(clock.instant());
         return me(userId);
     }
 
-    /** Ends the stall of a person deleting their account. */
+    /** Ends the stalls of a person deleting their account. */
     @Transactional
     public void stopAllFor(UUID userId) {
-        popups.findLive(userId, clock.instant()).ifPresent(p -> p.stop(clock.instant()));
+        Instant now = clock.instant();
+        popups.findTop20BySellerIdOrderByCreatedAtDesc(userId).stream().filter(p -> isActive(p, now))
+                .forEach(p -> p.stop(now));
     }
 
-    private void open(PopupSeller seller, List<PopupItem> items, Double lat, Double lng, Integer days, Instant now) {
+    private static boolean isActive(Popup p, Instant now) {
+        Status s = p.status(now);
+        return s == Status.LIVE || s == Status.PENDING_PAYMENT;
+    }
+
+    private void open(PopupSeller seller, Vendor shop, String stallName, List<PopupItem> items, Double lat,
+                      Double lng, Integer days, Instant now) {
         if (seller.isBlocked()) {
             throw ApiException.forbidden("seller_blocked",
                     "You cannot open stalls on Mintadeal. Contact Mintadeal support if you think this is a mistake.");
         }
-        if (popups.findLive(seller.getUserId(), now).isPresent()) {
-            throw ApiException.conflict("popup_live", "You are already selling. Stop that stall first.");
+        int max = maxLive(seller, shop);
+        if (popups.findLive(seller.getUserId(), now).size() + popups.countAwaitingPayment(seller.getUserId(), now)
+                >= max) {
+            throw ApiException.conflict("popup_live", max == 1
+                    ? "You are already selling. Stop that stall first."
+                    : "You can run " + max + " stalls at a time. Stop one first.");
         }
         if (popups.countBySellerIdAndCreatedAtAfter(seller.getUserId(), now.minus(Duration.ofDays(1)))
                 >= props.maxPerDay()) {
@@ -153,7 +242,55 @@ public class PopupService {
                     .map(String::valueOf).collect(Collectors.joining(", ")) + " days");
         }
         checkPlace(lat, lng);
-        popups.save(new Popup(seller.getUserId(), seller.getName(), lat, lng, days, items, now));
+        Popup p = new Popup(seller.getUserId(), stallName, lat, lng, days, items, now);
+        if (shop != null) {
+            p.fromShop(shop.getId(), shop.getDisplayName());
+        }
+        long fee = feePerDay(seller, shop) * days;
+        String what = "Pop-up stall " + stallName + ", " + days + (days == 1 ? " day" : " days");
+        if (fee > 0 && shop != null) {
+            p.chargedToShop(fee, now);
+            popups.save(p);
+            bookkeeping.popupFeeChargedToShop(p.getId(), shop.getId(), what, fee);
+        } else if (fee > 0) {
+            PaymentGateway gateway = gateways.active().orElseThrow(() -> ApiException.conflict("payment_unavailable",
+                    "Online payment is not set up yet, so paid stalls cannot be opened. Contact Mintadeal."));
+            Instant deadline = now.plus(PAYMENT_WINDOW);
+            String phone = users.findById(seller.getUserId()).map(u -> u.getPhone()).orElse(null);
+            PaymentGateway.Link link = gateway.createLink(fee, "popup_" + p.getId().toString().replace("-", ""),
+                    "Mintadeal " + what, seller.getName(), phone, deadline, Map.of("popup_id", p.getId().toString()));
+            p.awaitPayment(fee, gateway.name(), link.reference(), link.url(), deadline);
+            popups.save(p);
+        } else {
+            popups.save(p);
+        }
+    }
+
+    private String stallName(String requested, PopupSeller seller) {
+        return requested == null || requested.isBlank() ? seller.getName() : checkedName(requested);
+    }
+
+    /** The person's approved shop, if they have one. */
+    private Vendor shopOf(UUID userId) {
+        return vendors.findByOwnerUserId(userId).filter(Vendor::isApproved).orElse(null);
+    }
+
+    private PopupSettings settings() {
+        return settings.findById(1).orElseThrow();
+    }
+
+    private int maxLive(PopupSeller seller, Vendor shop) {
+        if (seller != null && seller.getMaxLive() != null) {
+            return seller.getMaxLive();
+        }
+        return shop != null ? settings().getShopMaxLive() : settings().getSellerMaxLive();
+    }
+
+    private long feePerDay(PopupSeller seller, Vendor shop) {
+        if (seller != null && seller.getFeePerDayMinor() != null) {
+            return seller.getFeePerDayMinor();
+        }
+        return shop != null ? settings().getShopFeePerDayMinor() : settings().getSellerFeePerDayMinor();
     }
 
     private static void checkPlace(Double lat, Double lng) {
@@ -258,7 +395,7 @@ public class PopupService {
     private static PublicPopup toPublic(Popup p, String phone, Double km) {
         return new PublicPopup(p.getId(), p.getSellerName(), phone, p.getItems().stream().map(ItemDto::of).toList(),
                 p.getLatitude(), p.getLongitude(), km == null ? null : Math.round(km * 10) / 10.0, p.getStartsAt(),
-                p.getEndsAt());
+                p.getEndsAt(), p.getVendorId(), p.getVendorName());
     }
 
     private Map<UUID, String> phones(List<Popup> list) {
@@ -270,7 +407,7 @@ public class PopupService {
 
     // --- Admin ---
 
-    public enum AdminFilter { LIVE, REPORTED, ENDED, REMOVED }
+    public enum AdminFilter { LIVE, REPORTED, SHOPS, ENDED, REMOVED }
 
     @Transactional(readOnly = true)
     public PageResponse<AdminPopup> adminList(AdminFilter filter, UUID sellerId, int page) {
@@ -280,6 +417,7 @@ public class PopupService {
                 : switch (filter == null ? AdminFilter.LIVE : filter) {
                     case LIVE -> popups.findAllLive(now, pr);
                     case REPORTED -> popups.findReported(pr);
+                    case SHOPS -> popups.findFromShops(pr);
                     case ENDED -> popups.findAllEnded(now, pr);
                     case REMOVED -> popups.findByRemovedAtIsNotNullOrderByRemovedAtDesc(pr);
                 };
@@ -302,8 +440,9 @@ public class PopupService {
         if (seller.isBlocked()) {
             throw ApiException.conflict("seller_blocked", "Unblock the seller first");
         }
-        if (popups.findLive(p.getSellerId(), clock.instant()).filter(x -> !x.getId().equals(id)).isPresent()) {
-            throw ApiException.conflict("popup_live", "The seller already has another live stall");
+        if (popups.findLive(p.getSellerId(), clock.instant()).size()
+                >= maxLive(seller, shopOf(p.getSellerId()))) {
+            throw ApiException.conflict("popup_live", "The seller already runs as many stalls as allowed");
         }
         p.restore();
         audit.record("POPUP_RESTORED", "POPUP", id, null);
@@ -316,7 +455,7 @@ public class PopupService {
         PopupSeller seller = sellers.findById(sellerId).orElseThrow(() -> ApiException.notFound("Seller"));
         String why = reason == null || reason.isBlank() ? "Blocked by Mintadeal" : reason.strip();
         seller.block(why);
-        popups.findLive(sellerId, clock.instant()).ifPresent(p -> p.remove(why, clock.instant()));
+        popups.findLive(sellerId, clock.instant()).forEach(p -> p.remove(why, clock.instant()));
         audit.record("POPUP_SELLER_BLOCKED", "POPUP_SELLER", sellerId, why);
     }
 
@@ -324,6 +463,44 @@ public class PopupService {
     public void unblock(UUID sellerId) {
         sellers.findById(sellerId).orElseThrow(() -> ApiException.notFound("Seller")).unblock();
         audit.record("POPUP_SELLER_UNBLOCKED", "POPUP_SELLER", sellerId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public SettingsDto settingsView() {
+        return SettingsDto.of(settings());
+    }
+
+    @Transactional
+    public SettingsDto updateSettings(SettingsDto r) {
+        settings().update(r.shopMaxLive(), r.shopFeePerDayMinor(), r.sellerMaxLive(), r.sellerFeePerDayMinor(),
+                clock.instant());
+        audit.record("POPUP_SETTINGS_CHANGED", "POPUP_SETTINGS", new UUID(0, 1), r.toString());
+        return settingsView();
+    }
+
+    @Transactional(readOnly = true)
+    public SellerLimits limits(UUID userId) {
+        User user = users.findById(userId).orElseThrow(() -> ApiException.notFound("Person"));
+        PopupSeller seller = sellers.findById(userId).orElse(null);
+        Vendor shop = shopOf(userId);
+        return new SellerLimits(userId, seller != null ? seller.getName()
+                : shop != null ? shop.getDisplayName() : user.getName(), user.getPhone(),
+                shop == null ? null : shop.getDisplayName(), seller == null ? null : seller.getMaxLive(),
+                seller == null ? null : seller.getFeePerDayMinor(), maxLive(seller, shop), feePerDay(seller, shop));
+    }
+
+    /** Sets one seller's limits; a shop owner who never opened a stall gets a seller record named after the shop. */
+    @Transactional
+    public SellerLimits setLimits(UUID userId, LimitsRequest r) {
+        User user = users.findById(userId).orElseThrow(() -> ApiException.notFound("Person"));
+        PopupSeller seller = sellers.findById(userId).orElseGet(() -> {
+            Vendor shop = vendors.findByOwnerUserId(userId).orElse(null);
+            String name = shop != null ? shop.getDisplayName() : user.getName() != null ? user.getName() : user.getPhone();
+            return sellers.save(new PopupSeller(userId, name, clock.instant()));
+        });
+        seller.setLimits(r.maxLive(), r.feePerDayMinor());
+        audit.record("POPUP_LIMITS_CHANGED", "POPUP_SELLER", userId, r.toString());
+        return limits(userId);
     }
 
     @Transactional(readOnly = true)
@@ -350,7 +527,8 @@ public class PopupService {
                     blocked.getOrDefault(p.getSellerId(), false), p.status(now),
                     p.getItems().stream().map(ItemDto::of).toList(), p.getLatitude(), p.getLongitude(), p.getDays(),
                     p.getStartsAt(), p.getEndsAt(), p.getStoppedAt(), p.getRemovedAt(), p.getRemovedReason(),
-                    p.getMovedAt(), n, rs);
+                    p.getMovedAt(), n, rs, p.getVendorId(), p.getVendorName(), p.getFeeMinor(),
+                    p.getPaymentProvider(), p.getPaidAt());
         };
     }
 }

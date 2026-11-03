@@ -24,6 +24,12 @@ public class PopupSeller {
 
     private String blockedReason;
 
+    /** An admin's limit for this seller; null uses the default. */
+    private Integer maxLive;
+
+    /** An admin's fee for this seller; null uses the default. */
+    private Long feePerDayMinor;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -67,6 +73,19 @@ public class PopupSeller {
     void unblock() {
         blocked = false;
         blockedReason = null;
+    }
+
+    public Integer getMaxLive() {
+        return maxLive;
+    }
+
+    public Long getFeePerDayMinor() {
+        return feePerDayMinor;
+    }
+
+    void setLimits(Integer maxLive, Long feePerDayMinor) {
+        this.maxLive = maxLive;
+        this.feePerDayMinor = feePerDayMinor;
     }
 
     public Instant getCreatedAt() {

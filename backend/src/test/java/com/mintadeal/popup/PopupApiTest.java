@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import com.mintadeal.support.ApiTest;
 
-/** Pop-up stalls: one live stall per seller, gone from customers when its days end, history kept for admins. */
+/** Pop-up stalls: one live stall per seller by default, gone from customers when its days end, history kept for admins. */
 class PopupApiTest extends ApiTest {
 
     private static final String PHOTO = "http://localhost:8080/files/00000000-0000-0000-0000-000000000001.jpg";
@@ -36,8 +36,8 @@ class PopupApiTest extends ApiTest {
         String id = read(call(POST("/api/popup/stalls"), seller, stall("Ravi Fruits", "Mangoes", 2))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("Ravi Fruits"))
-                .andExpect(jsonPath("$.live.status").value("LIVE"))
-                .andExpect(jsonPath("$.live.items", hasSize(2))), "$.live.id");
+                .andExpect(jsonPath("$.active[0].status").value("LIVE"))
+                .andExpect(jsonPath("$.active[0].items", hasSize(2))), "$.active[0].id");
 
         call(GET("/api/discovery/popups?" + CUSTOMER), null, null)
                 .andExpect(status().isOk())
@@ -57,14 +57,14 @@ class PopupApiTest extends ApiTest {
     @Test
     void movingKeepsOneSpotAndStoppingHidesItButKeepsHistory() throws Exception {
         String seller = login("9811100002");
-        String id = read(call(POST("/api/popup/stalls"), seller, stall("Lakshmi Flowers", "Jasmine", 3)), "$.live.id");
+        String id = read(call(POST("/api/popup/stalls"), seller, stall("Lakshmi Flowers", "Jasmine", 3)), "$.active[0].id");
         call(POST("/api/popup/stalls/" + id + "/move"), seller, "{\"latitude\":12.9719,\"longitude\":77.6412}")
-                .andExpect(jsonPath("$.live.latitude").value(12.9719));
+                .andExpect(jsonPath("$.active[0].latitude").value(12.9719));
         call(GET("/api/discovery/popups?lat=12.9719&lng=77.6412"), null, null).andExpect(jsonPath("$", hasSize(1)));
         call(GET("/api/discovery/popups?" + CUSTOMER), null, null).andExpect(jsonPath("$", hasSize(0)));
 
         call(POST("/api/popup/stalls/" + id + "/stop"), seller, null)
-                .andExpect(jsonPath("$.live").doesNotExist())
+                .andExpect(jsonPath("$.active", hasSize(0)))
                 .andExpect(jsonPath("$.history[0].status").value("ENDED"));
         call(GET("/api/discovery/popups?lat=12.9719&lng=77.6412"), null, null).andExpect(jsonPath("$", hasSize(0)));
         call(GET("/api/discovery/popups/" + id), null, null).andExpect(status().isNotFound());
@@ -72,8 +72,8 @@ class PopupApiTest extends ApiTest {
         // Sell again reuses the photos at a new spot.
         call(POST("/api/popup/stalls/" + id + "/again"), seller, "{" + HERE + ",\"days\":1}")
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.live.items[0].title").value("Jasmine"))
-                .andExpect(jsonPath("$.live.days").value(1));
+                .andExpect(jsonPath("$.active[0].items[0].title").value("Jasmine"))
+                .andExpect(jsonPath("$.active[0].days").value(1));
         String admin = login(ADMIN_PHONE);
         call(GET("/api/admin/popups?filter=ENDED"), admin, null).andExpect(jsonPath("$.items[0].id").value(id));
     }
@@ -96,7 +96,7 @@ class PopupApiTest extends ApiTest {
     @Test
     void customerReportsHideAStallAndAdminsDecide() throws Exception {
         String seller = login("9811100004");
-        String id = read(call(POST("/api/popup/stalls"), seller, stall("Quick Snacks", "Samosa", 2)), "$.live.id");
+        String id = read(call(POST("/api/popup/stalls"), seller, stall("Quick Snacks", "Samosa", 2)), "$.active[0].id");
         String sellerId = read(call(GET("/api/me"), seller, null), "$.id");
         for (String phone : new String[] {"9811100011", "9811100012"}) {
             call(POST("/api/popup/stalls/" + id + "/report"), login(phone), "{\"reason\":\"NOT_THERE\"}")
@@ -126,7 +126,7 @@ class PopupApiTest extends ApiTest {
 
     @Test
     void customersMustSignInToReport() throws Exception {
-        String id = read(call(POST("/api/popup/stalls"), login("9811100005"), stall("Toys", "Kites", 2)), "$.live.id");
+        String id = read(call(POST("/api/popup/stalls"), login("9811100005"), stall("Toys", "Kites", 2)), "$.active[0].id");
         call(POST("/api/popup/stalls/" + id + "/report"), null, "{\"reason\":\"OTHER\"}")
                 .andExpect(status().isUnauthorized());
     }

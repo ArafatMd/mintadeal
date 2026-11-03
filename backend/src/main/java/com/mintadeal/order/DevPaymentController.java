@@ -2,6 +2,7 @@ package com.mintadeal.order;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,8 +19,11 @@ class DevPaymentController {
     private final FakeGateway fake;
     private final PaymentService payments;
     private final CheckoutRepository checkouts;
+    private final ApplicationEventPublisher events;
 
-    DevPaymentController(FakeGateway fake, PaymentService payments, CheckoutRepository checkouts) {
+    DevPaymentController(FakeGateway fake, PaymentService payments, CheckoutRepository checkouts,
+                         ApplicationEventPublisher events) {
+        this.events = events;
         this.fake = fake;
         this.payments = payments;
         this.checkouts = checkouts;
@@ -27,9 +31,13 @@ class DevPaymentController {
 
     @GetMapping(value = "/dev/pay/{reference}", produces = MediaType.TEXT_HTML_VALUE)
     String page(@PathVariable String reference) {
-        Checkout c = checkouts.findByPaymentReference(reference).orElseThrow(() -> ApiException.notFound("Payment"));
-        String amount = HtmlUtils.htmlEscape(OrderCodes.rupees(c.getGrandTotalMinor()));
-        String code = HtmlUtils.htmlEscape(c.getCode());
+        Checkout c = checkouts.findByPaymentReference(reference).orElse(null);
+        String other = c == null ? fake.describe(reference) : null;
+        if (c == null && other == null) {
+            throw ApiException.notFound("Payment");
+        }
+        String amount = HtmlUtils.htmlEscape(c == null ? "" : OrderCodes.rupees(c.getGrandTotalMinor()));
+        String code = HtmlUtils.htmlEscape(c == null ? other : "Mintadeal order " + c.getCode());
         String ref = HtmlUtils.htmlEscape(reference);
         return """
                 <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -38,15 +46,20 @@ class DevPaymentController {
                 button{background:#B9530A;color:#fff;border:0;border-radius:8px;padding:14px 20px;font-size:16px;width:100%%}
                 .note{background:#fff3cd;padding:10px;border-radius:8px;font-size:14px}</style></head>
                 <body><p class="note">Test payment page (development only). No money moves.</p>
-                <h2>Pay %s</h2><p>Mintadeal order %s</p>
+                <h2>Pay %s</h2><p>%s</p>
                 <form method="post" action="/dev/pay/%s"><button id="pay">Pay %s</button></form></body></html>
                 """.formatted(amount, code, ref, amount);
     }
 
     @PostMapping(value = "/dev/pay/{reference}", produces = MediaType.TEXT_HTML_VALUE)
     String pay(@PathVariable String reference) {
-        checkouts.findByPaymentReference(reference).orElseThrow(() -> ApiException.notFound("Payment"));
-        payments.confirmPaidByReference(reference, fake.pay(reference));
+        if (checkouts.findByPaymentReference(reference).isPresent()) {
+            payments.confirmPaidByReference(reference, fake.pay(reference));
+        } else if (fake.describe(reference) != null) {
+            events.publishEvent(new PaymentLinkPaidEvent(reference, fake.pay(reference)));
+        } else {
+            throw ApiException.notFound("Payment");
+        }
         return "<!doctype html><html><body style=\"font-family:sans-serif;text-align:center;margin-top:60px\">"
                 + "<h2>Payment successful</h2><p>Return to the Mintadeal app.</p></body></html>";
     }

@@ -107,7 +107,8 @@ public class AdminFinanceController {
         long failedRefunds = refunds.findAll().stream().filter(r -> r.getStatus() == RefundStatus.FAILED).count();
         return new Summary(entries.balance(Account.GATEWAY), -entries.balance(Account.CUSTOMER_PREPAID), owedToShops,
                 owedByShops, -entries.balance(Account.PAYOUTS_IN_TRANSIT), -entries.balance(Account.COMMISSION_REVENUE),
-                -entries.balance(Account.DELIVERY_RECOVERY), entries.total() == 0,
+                -entries.balance(Account.DELIVERY_RECOVERY), -entries.balance(Account.POPUP_FEE_REVENUE),
+                entries.total() == 0,
                 pending.stream().mapToLong(Payout::getAmountMinor).sum(), pending.size(), (int) failedRefunds);
     }
 

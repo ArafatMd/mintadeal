@@ -16,6 +16,10 @@ public interface PaymentGateway {
 
     Link create(Checkout checkout, Instant deadline);
 
+    /** A payment page for something other than an order, such as a pop-up stall's listing fee. */
+    Link createLink(long amountMinor, String referenceId, String description, String name, String phone,
+                    Instant deadline, java.util.Map<String, String> notes);
+
     Status fetch(String reference);
 
     void cancel(String reference);

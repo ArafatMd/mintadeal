@@ -64,18 +64,38 @@ class MintadealApi {
   Future<PopupMe> renamePopupSeller(String name) async =>
       PopupMe.fromJson(await client.put('/api/popup/me', {'name': name}) as Json);
 
-  Future<PopupMe> startPopup({String? name, required List<PopupItem> items, required GeoPoint at, required int days}) async =>
+  Future<PopupMe> startPopup(
+          {String? name, String? stallName, required List<PopupItem> items, required GeoPoint at, required int days}) async =>
       PopupMe.fromJson(await client.post('/api/popup/stalls', {
         'name': name,
+        'stallName': stallName,
         'items': [for (final i in items) i.toJson()],
         'latitude': at.lat,
         'longitude': at.lng,
         'days': days,
       }) as Json);
 
-  Future<PopupMe> popupAgain(String fromId, {required GeoPoint at, required int days}) async =>
+  Future<PopupMe> popupAgain(String fromId, {required GeoPoint at, required int days, String? stallName}) async =>
       PopupMe.fromJson(await client.post('/api/popup/stalls/$fromId/again',
-          {'latitude': at.lat, 'longitude': at.lng, 'days': days}) as Json);
+          {'latitude': at.lat, 'longitude': at.lng, 'days': days, 'stallName': stallName}) as Json);
+
+  /// After the seller comes back from paying a stall's fee.
+  Future<PopupMe> checkPopupPayment(String id) async =>
+      PopupMe.fromJson(await client.post('/api/popup/stalls/$id/check-payment') as Json);
+
+  Future<PopupSettings> popupSettings() async =>
+      PopupSettings.fromJson(await client.get('/api/admin/popup-settings') as Json);
+
+  Future<PopupSettings> updatePopupSettings(PopupSettings s) async =>
+      PopupSettings.fromJson(await client.put('/api/admin/popup-settings', s.toJson()) as Json);
+
+  Future<SellerLimits> sellerLimits(String userId) async =>
+      SellerLimits.fromJson(await client.get('/api/admin/popup-sellers/$userId/limits') as Json);
+
+  /// Null fields go back to the defaults.
+  Future<SellerLimits> setSellerLimits(String userId, {int? maxLive, int? feePerDayMinor}) async =>
+      SellerLimits.fromJson(await client.put('/api/admin/popup-sellers/$userId/limits',
+          {'maxLive': maxLive, 'feePerDayMinor': feePerDayMinor}) as Json);
 
   Future<PopupMe> movePopup(String id, GeoPoint at) async => PopupMe.fromJson(
       await client.post('/api/popup/stalls/$id/move', {'latitude': at.lat, 'longitude': at.lng}) as Json);

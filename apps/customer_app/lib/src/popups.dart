@@ -4,6 +4,7 @@ import 'package:mintadeal_core/mintadeal_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'sign_in.dart';
+import 'storefront_screen.dart';
 
 /// Live pop-up stalls near a point; none when they cannot be loaded, so home never breaks because of them.
 final nearbyPopupsProvider = FutureProvider.autoDispose.family<List<PublicPopup>, (double, double)>((ref, at) async {
@@ -97,8 +98,19 @@ class _PopupCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(popup.sellerName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                Row(children: [
+                  Flexible(
+                    child: Text(popup.sellerName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  ),
+                  if (popup.vendorId != null) ...[
+                    const SizedBox(width: 3),
+                    Tooltip(
+                      message: 'Run by ${popup.vendorName}, a shop checked by Mintadeal',
+                      child: const Icon(Icons.verified, size: 16, color: Color(0xFF1565C0)),
+                    ),
+                  ],
+                ]),
                 Text(
                   [
                     if (popup.distanceKm != null) formatDistance(popup.distanceKm!),
@@ -193,14 +205,28 @@ class PopupScreen extends ConsumerWidget {
         ].join(' · '), style: theme.textTheme.titleSmall),
       ]),
       const SizedBox(height: 8),
-      Row(children: [
-        Icon(Icons.info_outline, size: 16, color: theme.colorScheme.onSurfaceVariant),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text('Pop-up stall, not checked by Mintadeal. Pay the seller directly when you buy.',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-        ),
-      ]),
+      if (p.vendorId != null)
+        Card(
+          margin: EdgeInsets.zero,
+          color: const Color(0xFFE3F2FD),
+          child: ListTile(
+            leading: const Icon(Icons.verified, color: Color(0xFF1565C0)),
+            title: Text('From ${p.vendorName}', style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: const Text('Verified shop on Mintadeal. Pay at the stall when you buy.'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => StorefrontScreen(vendorId: p.vendorId!, at: at))),
+          ),
+        )
+      else
+        Row(children: [
+          Icon(Icons.info_outline, size: 16, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text('Pop-up stall, not checked by Mintadeal. Pay the seller directly when you buy.',
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ),
+        ]),
       const SizedBox(height: 14),
       Wrap(spacing: 8, runSpacing: 8, children: [
         FilledButton.icon(

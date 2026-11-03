@@ -130,6 +130,34 @@ class PopupText {
   String get blocked => _t('You cannot open stalls. Ask Mintadeal for help.',
       'ನೀವು ಸ್ಟಾಲ್ ತೆರೆಯಲು ಸಾಧ್ಯವಿಲ್ಲ. Mintadeal ಸಹಾಯ ಕೇಳಿ.', 'आप स्टॉल नहीं खोल सकते। Mintadeal से मदद लें।');
   String get changeName => _t('Change name', 'ಹೆಸರು ಬದಲಿಸಿ', 'नाम बदलें');
+
+  // Shops, more stalls and fees.
+  String get stallNameTitle => _t('Name of this stall', 'ಈ ಸ್ಟಾಲ್‌ನ ಹೆಸರು', 'इस स्टॉल का नाम');
+  String get stallNameHint => _t('For example: your shop name and the event', 'ಉದಾ: ನಿಮ್ಮ ಅಂಗಡಿ ಹೆಸರು ಮತ್ತು ಮೇಳ',
+      'जैसे: आपकी दुकान का नाम और मेला');
+  String get myStalls => _t('Pop-up stalls', 'ಪಾಪ್-ಅಪ್ ಸ್ಟಾಲ್‌ಗಳು', 'पॉप-अप स्टॉल');
+  String get myStallsHint => _t('Selling at an event or market? Open a stall for a few days.',
+      'ಮೇಳ ಅಥವಾ ಸಂತೆಯಲ್ಲಿ ಮಾರುತ್ತಿದ್ದೀರಾ? ಕೆಲವು ದಿನಗಳ ಸ್ಟಾಲ್ ತೆರೆಯಿರಿ.', 'मेले या बाज़ार में बेच रहे हैं? कुछ दिनों का स्टॉल खोलें।');
+  String get startAnother => _t('Start another stall', 'ಇನ್ನೊಂದು ಸ್ಟಾಲ್ ಶುರು ಮಾಡಿ', 'एक और स्टॉल शुरू करें');
+  String canRun(int n) => _t('You can run $n stalls at a time', 'ನೀವು ಒಂದೇ ಸಮಯದಲ್ಲಿ $n ಸ್ಟಾಲ್ ನಡೆಸಬಹುದು',
+      'आप एक साथ $n स्टॉल चला सकते हैं');
+  String feeInfo(String perDay, int days, String total) => _t('Fee: $perDay a day. $days days = $total',
+      'ಶುಲ್ಕ: ದಿನಕ್ಕೆ $perDay. $days ದಿನ = $total', 'शुल्क: $perDay प्रति दिन। $days दिन = $total');
+  String get feeFromShop => _t('Taken from your shop balance.', 'ನಿಮ್ಮ ಅಂಗಡಿ ಬ್ಯಾಲೆನ್ಸ್‌ನಿಂದ ಕಡಿತ.',
+      'आपकी दुकान के बैलेंस से कटेगा।');
+  String get feeOnline => _t('Pay online before your stall goes live.', 'ಸ್ಟಾಲ್ ಲೈವ್ ಆಗುವ ಮೊದಲು ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಪಾವತಿಸಿ.',
+      'स्टॉल लाइव होने से पहले ऑनलाइन भुगतान करें।');
+  String get free => _t('Free', 'ಉಚಿತ', 'मुफ़्त');
+  String get waitingPayment => _t('Waiting for payment', 'ಪಾವತಿಗಾಗಿ ಕಾಯುತ್ತಿದೆ', 'भुगतान का इंतज़ार');
+  String waitingPaymentHint(int minutes) => _t('Pay within $minutes minutes. Customers see your stall after you pay.',
+      '$minutes ನಿಮಿಷದೊಳಗೆ ಪಾವತಿಸಿ. ಪಾವತಿಸಿದ ನಂತರ ಗ್ರಾಹಕರಿಗೆ ಕಾಣುತ್ತದೆ.',
+      '$minutes मिनट में भुगतान करें। भुगतान के बाद ग्राहक आपका स्टॉल देखेंगे।');
+  String pay(String amount) => _t('Pay $amount', '$amount ಪಾವತಿಸಿ', '$amount भुगतान करें');
+  String get iHavePaid => _t('I have paid', 'ನಾನು ಪಾವತಿಸಿದ್ದೇನೆ', 'मैंने भुगतान कर दिया');
+  String get notPaidYet => _t('Payment not received yet. Try again in a minute.',
+      'ಪಾವತಿ ಇನ್ನೂ ಬಂದಿಲ್ಲ. ಒಂದು ನಿಮಿಷದ ನಂತರ ಪ್ರಯತ್ನಿಸಿ.', 'भुगतान अभी नहीं मिला। एक मिनट बाद फिर कोशिश करें।');
+  String get cancel => _t('Cancel', 'ರದ್ದು ಮಾಡಿ', 'रद्द करें');
+  String get paidLive => _t('Paid. You are live!', 'ಪಾವತಿಯಾಯಿತು. ನೀವು ಲೈವ್!', 'भुगतान हो गया। आप लाइव हैं!');
 }
 
 final popupTextProvider = Provider<PopupText>((ref) => PopupText(ref.watch(popupLangProvider)));

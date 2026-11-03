@@ -47,6 +47,21 @@ class _NoShopYet extends ConsumerWidget {
   }
 }
 
+/// A shop's own pop-up stalls, opened from My shop.
+class _ShopStalls extends ConsumerWidget {
+  const _ShopStalls();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final me = ref.watch(popupMeProvider);
+    return AsyncView(
+      value: me,
+      onRetry: () => ref.invalidate(popupMeProvider),
+      data: (me) => PopupHome(me: me, fromShop: true),
+    );
+  }
+}
+
 class _ReviewStatusScreen extends ConsumerWidget {
   const _ReviewStatusScreen({required this.shop});
 
@@ -260,6 +275,13 @@ class _ShopTab extends ConsumerWidget {
           ),
           if (shop.vendorType == VendorType.INTERNAL)
             const ListTile(leading: Icon(Icons.verified_outlined), title: Text('Mintadeal own catalogue')),
+          ListTile(
+            leading: const Icon(Icons.local_mall_outlined),
+            title: const Text('Pop-up stalls'),
+            subtitle: const Text('Selling at an event or market? Open a stall for a few days'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const _ShopStalls())),
+          ),
           ListTile(
             leading: const Icon(Icons.support_agent_outlined),
             title: const Text('Help & support'),

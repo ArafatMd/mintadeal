@@ -35,6 +35,21 @@ class FakeGateway implements PaymentGateway {
         return new Link(ref, publicBaseUrl + "/dev/pay/" + ref);
     }
 
+    /** What a link created with {@link #createLink} is for, so the test page can show it. */
+    private final Map<String, String> descriptions = new ConcurrentHashMap<>();
+
+    @Override
+    public Link createLink(long amountMinor, String referenceId, String description, String name, String phone,
+                           Instant deadline, Map<String, String> notes) {
+        String ref = "fake_" + UUID.randomUUID().toString().replace("-", "");
+        descriptions.put(ref, description + " · ₹" + amountMinor / 100);
+        return new Link(ref, publicBaseUrl + "/dev/pay/" + ref);
+    }
+
+    String describe(String reference) {
+        return descriptions.get(reference);
+    }
+
     String pay(String reference) {
         return paid.computeIfAbsent(reference, r -> "fakepay_" + UUID.randomUUID().toString().substring(0, 12));
     }

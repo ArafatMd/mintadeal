@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../shop_form_screen.dart';
 import 'popup_text.dart';
@@ -152,11 +153,14 @@ class StartChoiceScreen extends ConsumerWidget {
   }
 }
 
-/// The seller's stall: live now, or start one, with earlier stalls to sell again.
+/// The seller's stalls: live now or waiting for their fee, a button to start one, and earlier stalls to sell again.
+///
+/// [fromShop] when a shop owner opened it from My shop: the shop app's own menu covers sign-out and account deletion.
 class PopupHome extends ConsumerStatefulWidget {
-  const PopupHome({super.key, required this.me});
+  const PopupHome({super.key, required this.me, this.fromShop = false});
 
   final PopupMe me;
+  final bool fromShop;
 
   @override
   ConsumerState<PopupHome> createState() => _PopupHomeState();
@@ -205,6 +209,21 @@ class _PopupHomeState extends ConsumerState<PopupHome> {
     if (ok == true) await _run(() => ref.read(apiProvider).stopPopup(live.id), done: t.stopped);
   }
 
+  Future<void> _pay(MyPopup p) async {
+    final url = p.paymentUrl;
+    if (url != null) await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _checkPaid(MyPopup p) async {
+    final t = ref.read(popupTextProvider);
+    await _run(() async {
+      final me = await ref.read(apiProvider).checkPopupPayment(p.id);
+      final now = me.active.where((x) => x.id == p.id).firstOrNull;
+      if (mounted) showMessage(context, now?.status == PopupStatus.LIVE ? t.paidLive : t.notPaidYet);
+      return me;
+    });
+  }
+
   Future<void> _rename() async {
     final t = ref.read(popupTextProvider);
     final controller = TextEditingController(text: widget.me.name);
@@ -227,14 +246,15 @@ class _PopupHomeState extends ConsumerState<PopupHome> {
   Widget build(BuildContext context) {
     final t = ref.watch(popupTextProvider);
     final me = widget.me;
-    final live = me.live;
     final theme = Theme.of(context);
+    void start() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => StallFlow(me: me)));
     return Scaffold(
       appBar: AppBar(
-        title: Text(me.name ?? t.myStall, overflow: TextOverflow.ellipsis),
+        title: Text(widget.fromShop ? t.myStalls : me.name ?? t.myStall, overflow: TextOverflow.ellipsis),
         actions: [
           const LanguageButton(),
-          PopupMenuButton<String>(
+          if (!widget.fromShop)
+            PopupMenuButton<String>(
             onSelected: (v) => switch (v) {
               'name' => _rename(),
               'help' => Navigator.of(context)
@@ -264,20 +284,38 @@ class _PopupHomeState extends ConsumerState<PopupHome> {
                 ]),
               ),
             )
-          else if (live != null) ...[
-            _LiveCard(popup: live),
-            const SizedBox(height: 16),
-            BigButton(icon: Icons.my_location, label: t.moved, outlined: true, busy: _busy, onPressed: () => _move(live)),
-            const SizedBox(height: 12),
-            BigButton(icon: Icons.stop_circle_outlined, label: t.stop, color: theme.colorScheme.error, outlined: true,
-                busy: _busy, onPressed: () => _stop(live)),
-          ] else
-            BigButton(
-              icon: Icons.add_a_photo,
-              label: t.startSelling,
-              color: _liveGreen,
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => StallFlow(me: me))),
-            ),
+          else ...[
+            for (final p in me.active) ...[
+              if (p.status == PopupStatus.PENDING_PAYMENT)
+                _PayCard(popup: p, busy: _busy, onPay: () => _pay(p), onPaid: () => _checkPaid(p),
+                    onCancel: () => _run(() => ref.read(apiProvider).stopPopup(p.id)))
+              else ...[
+                _LiveCard(popup: p, showName: me.isShop || me.maxLive > 1),
+                const SizedBox(height: 16),
+                BigButton(icon: Icons.my_location, label: t.moved, outlined: true, busy: _busy, onPressed: () => _move(p)),
+                const SizedBox(height: 12),
+                BigButton(icon: Icons.stop_circle_outlined, label: t.stop, color: theme.colorScheme.error,
+                    outlined: true, busy: _busy, onPressed: () => _stop(p)),
+              ],
+              const SizedBox(height: 24),
+            ],
+            if (me.canStartAnother) ...[
+              if (me.active.isEmpty && widget.fromShop) ...[
+                Text(t.myStallsHint, style: theme.textTheme.titleMedium),
+                const SizedBox(height: 14),
+              ],
+              BigButton(
+                icon: Icons.add_a_photo,
+                label: me.active.isEmpty ? t.startSelling : t.startAnother,
+                color: _liveGreen,
+                onPressed: start,
+              ),
+              if (me.maxLive > 1) ...[
+                const SizedBox(height: 6),
+                Text(t.canRun(me.maxLive), textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
+              ],
+            ],
+          ],
           if (me.history.isNotEmpty) ...[
             const SizedBox(height: 28),
             Text(t.pastStalls, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
@@ -285,13 +323,60 @@ class _PopupHomeState extends ConsumerState<PopupHome> {
             for (final p in me.history)
               _PastStall(
                 popup: p,
-                canSellAgain: live == null && !me.blocked && p.status != PopupStatus.REMOVED,
+                canSellAgain: me.canStartAnother && p.status != PopupStatus.REMOVED,
                 onSellAgain: () =>
                     Navigator.of(context).push(MaterialPageRoute(builder: (_) => StallFlow(me: me, again: p))),
               ),
           ],
-          const SizedBox(height: 24),
-          const DeleteAccountTile(),
+          if (!widget.fromShop) ...[
+            const SizedBox(height: 24),
+            const DeleteAccountTile(),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+/// A stall waiting for its listing fee: pay, say you paid, or cancel.
+class _PayCard extends ConsumerWidget {
+  const _PayCard({required this.popup, required this.busy, required this.onPay, required this.onPaid,
+      required this.onCancel});
+
+  final MyPopup popup;
+  final bool busy;
+  final VoidCallback onPay;
+  final VoidCallback onPaid;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(popupTextProvider);
+    final theme = Theme.of(context);
+    final left = popup.paymentDeadline?.difference(DateTime.now()).inMinutes ?? 0;
+    return Card(
+      color: theme.colorScheme.tertiaryContainer,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Icon(Icons.hourglass_top, size: 32),
+            const SizedBox(width: 10),
+            Expanded(child: Text(t.waitingPayment,
+                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800))),
+          ]),
+          const SizedBox(height: 4),
+          Text(popup.name, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(t.waitingPaymentHint(left.clamp(1, 30)), style: theme.textTheme.bodyLarge),
+          const SizedBox(height: 16),
+          BigButton(icon: Icons.payments, label: t.pay(formatInr(popup.feeMinor)), color: _liveGreen, busy: busy,
+              onPressed: onPay),
+          const SizedBox(height: 10),
+          BigButton(icon: Icons.check, label: t.iHavePaid, color: _liveGreen, outlined: true, busy: busy,
+              onPressed: onPaid),
+          TextButton(onPressed: busy ? null : onCancel, child: Text(t.cancel, style: const TextStyle(fontSize: 18))),
         ]),
       ),
     );
@@ -299,9 +384,10 @@ class _PopupHomeState extends ConsumerState<PopupHome> {
 }
 
 class _LiveCard extends ConsumerWidget {
-  const _LiveCard({required this.popup});
+  const _LiveCard({required this.popup, this.showName = false});
 
   final MyPopup popup;
+  final bool showName;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -322,6 +408,10 @@ class _LiveCard extends ConsumerWidget {
                   style: theme.textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
             ),
           ]),
+          if (showName) ...[
+            const SizedBox(height: 4),
+            Text(popup.name, style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+          ],
           const SizedBox(height: 6),
           Text(t.liveHint, style: theme.textTheme.titleMedium?.copyWith(color: Colors.white)),
           const SizedBox(height: 14),
@@ -459,11 +549,18 @@ class _StallFlowState extends ConsumerState<StallFlow> {
   bool _busy = false;
   String? _error;
 
+  /// The stall just started; when its fee is still to pay, the last screen asks for it.
+  MyPopup? _started;
+
+  bool get _isShop => widget.me.isShop;
+
   @override
   void initState() {
     super.initState();
+    // A shop names every stall (it may run several, at different events); others give their name once.
+    if (_isShop) _name.text = widget.again?.name ?? widget.me.shopName ?? '';
     _steps = [
-      if (widget.me.name == null) _Step.name,
+      if (_isShop || widget.me.name == null) _Step.name,
       if (widget.again == null) _Step.photos,
       _Step.days,
       _Step.here,
@@ -535,11 +632,14 @@ class _StallFlowState extends ConsumerState<StallFlow> {
         return;
       }
       final api = ref.read(apiProvider);
+      final stallName = _isShop ? _name.text.trim() : null;
+      final PopupMe me;
       if (widget.again != null) {
-        await api.popupAgain(widget.again!.id, at: p, days: _days);
+        me = await api.popupAgain(widget.again!.id, at: p, days: _days, stallName: stallName);
       } else {
-        await api.startPopup(
-          name: widget.me.name == null ? _name.text.trim() : null,
+        me = await api.startPopup(
+          name: !_isShop && widget.me.name == null ? _name.text.trim() : null,
+          stallName: stallName,
           items: [
             for (final ph in _photos)
               PopupItem(
@@ -553,7 +653,10 @@ class _StallFlowState extends ConsumerState<StallFlow> {
         );
       }
       ref.invalidate(popupMeProvider);
-      setState(() => _at++);
+      setState(() {
+        _started = me.active.firstOrNull;
+        _at++;
+      });
     } on LocationProblem {
       setState(() => _error = t.locationFailed);
     } on ApiError catch (e) {
@@ -569,12 +672,13 @@ class _StallFlowState extends ConsumerState<StallFlow> {
   Widget build(BuildContext context) {
     final t = ref.watch(popupTextProvider);
     final theme = Theme.of(context);
+    final unpaid = _started?.status == PopupStatus.PENDING_PAYMENT;
     final title = switch (_step) {
-      _Step.name => t.yourName,
+      _Step.name => _isShop ? t.stallNameTitle : t.yourName,
       _Step.photos => t.photosTitle,
       _Step.days => t.daysTitle,
       _Step.here => t.hereTitle,
-      _Step.done => t.youAreLive,
+      _Step.done => unpaid ? t.waitingPayment : t.youAreLive,
     };
     final body = switch (_step) {
       _Step.name => _nameStep(t),
@@ -640,7 +744,7 @@ class _StallFlowState extends ConsumerState<StallFlow> {
           decoration: const InputDecoration(prefixIcon: Icon(Icons.person, size: 30)),
           onSubmitted: (_) => _next(),
         ),
-        Text(t.yourNameHint, style: const TextStyle(fontSize: 16)),
+        Text(_isShop ? t.stallNameHint : t.yourNameHint, style: const TextStyle(fontSize: 16)),
       ]);
 
   Widget _photosStep(PopupText t) {
@@ -707,7 +811,32 @@ class _StallFlowState extends ConsumerState<StallFlow> {
     ]);
   }
 
-  Widget _daysStep(PopupText t) => Wrap(spacing: 12, runSpacing: 12, children: [
+  Widget _daysStep(PopupText t) {
+    final perDay = widget.me.feePerDayMinor;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _dayChoices(t),
+      const SizedBox(height: 18),
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: _liveGreen.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
+        child: Row(children: [
+          const Icon(Icons.currency_rupee, color: _liveGreen, size: 28),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              perDay == 0
+                  ? t.free
+                  : '${t.feeInfo(formatInr(perDay), _days, formatInr(perDay * _days))}\n'
+                      '${_isShop ? t.feeFromShop : t.feeOnline}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ]),
+      ),
+    ]);
+  }
+
+  Widget _dayChoices(PopupText t) => Wrap(spacing: 12, runSpacing: 12, children: [
         for (final d in widget.me.allowedDays)
           SizedBox(
             width: 150,
@@ -755,7 +884,50 @@ class _StallFlowState extends ConsumerState<StallFlow> {
     ]);
   }
 
-  Widget _doneStep(PopupText t) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+  Future<void> _checkPaid() async {
+    final t = ref.read(popupTextProvider);
+    final started = _started!;
+    setState(() => _busy = true);
+    try {
+      final me = await ref.read(apiProvider).checkPopupPayment(started.id);
+      ref.invalidate(popupMeProvider);
+      final now = me.active.where((x) => x.id == started.id).firstOrNull;
+      setState(() {
+        if (now != null) _started = now;
+        _error = now?.status == PopupStatus.LIVE ? null : t.notPaidYet;
+      });
+    } catch (e) {
+      if (mounted) showError(context, e);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _doneStep(PopupText t) {
+    final started = _started;
+    if (started != null && started.status == PopupStatus.PENDING_PAYMENT) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Icon(Icons.payments, size: 110, color: _liveGreen),
+        Text(t.waitingPaymentHint(30), textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
+        const SizedBox(height: 24),
+        BigButton(
+          icon: Icons.payments,
+          label: t.pay(formatInr(started.feeMinor)),
+          color: _liveGreen,
+          busy: _busy,
+          onPressed: () => launchUrl(Uri.parse(started.paymentUrl!), mode: LaunchMode.externalApplication),
+        ),
+        const SizedBox(height: 10),
+        BigButton(icon: Icons.check, label: t.iHavePaid, color: _liveGreen, outlined: true, busy: _busy,
+            onPressed: _checkPaid),
+        const SizedBox(height: 10),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(t.myStall, style: const TextStyle(fontSize: 18))),
+      ]);
+    }
+    return _liveDone(t);
+  }
+
+  Widget _liveDone(PopupText t) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const Icon(Icons.check_circle, size: 140, color: _liveGreen),
         Text(t.liveHint, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20)),
         const SizedBox(height: 28),

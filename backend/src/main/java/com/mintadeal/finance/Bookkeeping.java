@@ -56,6 +56,20 @@ public class Bookkeeping {
                 Leg.credit(Account.DELIVERY_RECOVERY, costMinor)));
     }
 
+    /** A shop's pop-up stall fee, taken from what Mintadeal owes the shop. */
+    public void popupFeeChargedToShop(UUID popupId, UUID vendorId, String description, long feeMinor) {
+        ledger.post("POPUP_FEE", popupId, description, List.of(
+                Leg.debitVendor(vendorId, feeMinor),
+                Leg.credit(Account.POPUP_FEE_REVENUE, feeMinor)));
+    }
+
+    /** A pop-up seller paid their stall fee online. */
+    public void popupFeePaid(UUID popupId, String description, long feeMinor) {
+        ledger.post("POPUP_FEE", popupId, description, List.of(
+                Leg.debit(Account.GATEWAY, feeMinor),
+                Leg.credit(Account.POPUP_FEE_REVENUE, feeMinor)));
+    }
+
     public void payoutCreated(UUID payoutId, UUID vendorId, long amountMinor, String destination) {
         ledger.post("PAYOUT_CREATED", payoutId, "Payout to " + destination, List.of(
                 Leg.debitVendor(vendorId, amountMinor),

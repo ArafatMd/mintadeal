@@ -19,6 +19,9 @@ import com.mintadeal.common.CurrentUser;
 import com.mintadeal.common.PageResponse;
 import com.mintadeal.popup.PopupDtos.AdminPopup;
 import com.mintadeal.popup.PopupDtos.AgainRequest;
+import com.mintadeal.popup.PopupDtos.LimitsRequest;
+import com.mintadeal.popup.PopupDtos.SellerLimits;
+import com.mintadeal.popup.PopupDtos.SettingsDto;
 import com.mintadeal.popup.PopupDtos.Me;
 import com.mintadeal.popup.PopupDtos.MoveRequest;
 import com.mintadeal.popup.PopupDtos.NameRequest;
@@ -58,7 +61,12 @@ public class PopupController {
     @PostMapping("/api/popup/stalls/{id}/again")
     @ResponseStatus(HttpStatus.CREATED)
     public Me again(@PathVariable UUID id, @Valid @RequestBody AgainRequest req) {
-        return service.again(CurrentUser.id(), id, req.latitude(), req.longitude(), req.days());
+        return service.again(CurrentUser.id(), id, req.latitude(), req.longitude(), req.days(), req.stallName());
+    }
+
+    @PostMapping("/api/popup/stalls/{id}/check-payment")
+    public Me checkPayment(@PathVariable UUID id) {
+        return service.checkPayment(CurrentUser.id(), id);
     }
 
     @PostMapping("/api/popup/stalls/{id}/move")
@@ -113,6 +121,26 @@ public class PopupController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void block(@PathVariable UUID userId, @Valid @RequestBody(required = false) ReasonRequest req) {
         service.block(userId, req == null ? null : req.reason());
+    }
+
+    @GetMapping("/api/admin/popup-settings")
+    public SettingsDto settings() {
+        return service.settingsView();
+    }
+
+    @PutMapping("/api/admin/popup-settings")
+    public SettingsDto updateSettings(@Valid @RequestBody SettingsDto req) {
+        return service.updateSettings(req);
+    }
+
+    @GetMapping("/api/admin/popup-sellers/{userId}/limits")
+    public SellerLimits limits(@PathVariable UUID userId) {
+        return service.limits(userId);
+    }
+
+    @PutMapping("/api/admin/popup-sellers/{userId}/limits")
+    public SellerLimits setLimits(@PathVariable UUID userId, @Valid @RequestBody LimitsRequest req) {
+        return service.setLimits(userId, req);
     }
 
     @PostMapping("/api/admin/popup-sellers/{userId}/unblock")

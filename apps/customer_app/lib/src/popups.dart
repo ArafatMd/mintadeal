@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -42,10 +44,23 @@ class PopupRow extends ConsumerWidget {
           Icon(Icons.storefront, color: theme.colorScheme.primary),
           const SizedBox(width: 6),
           Expanded(
-            child: Text('Pop-up stalls near you',
+            child: Text('Pop-up stalls',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
           ),
-          Text('${popups.length} here now', style: theme.textTheme.labelLarge),
+          TextButton.icon(
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => PopupsScreen(at: at, startOnMap: true))),
+            style: TextButton.styleFrom(foregroundColor: theme.colorScheme.primary, visualDensity: VisualDensity.compact),
+            icon: const Icon(Icons.map_outlined, size: 18),
+            label: const Text('Map', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PopupsScreen(at: at))),
+            style: TextButton.styleFrom(foregroundColor: theme.colorScheme.primary, visualDensity: VisualDensity.compact),
+            child: Text('All ${popups.length}', style: const TextStyle(fontWeight: FontWeight.w600)),
+          ),
         ]),
       ),
       SizedBox(
@@ -293,3 +308,224 @@ class PopupScreen extends ConsumerWidget {
 
 final _popupProvider = FutureProvider.autoDispose.family<PublicPopup, (String, double?, double?)>((ref, k) =>
     ref.watch(apiProvider).popup(k.$1, at: k.$2 == null ? null : GeoPoint(k.$2!, k.$3!)));
+
+/// Every stall near the customer, as a list or on a map.
+class PopupsScreen extends ConsumerStatefulWidget {
+  const PopupsScreen({super.key, required this.at, this.startOnMap = false});
+
+  final GeoPoint at;
+  final bool startOnMap;
+
+  @override
+  ConsumerState<PopupsScreen> createState() => _PopupsScreenState();
+}
+
+class _PopupsScreenState extends ConsumerState<PopupsScreen> {
+  late bool _map = widget.startOnMap;
+  PublicPopup? _selected;
+
+  void _open(PublicPopup p) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => PopupScreen(popupId: p.id, at: widget.at)));
+
+  @override
+  Widget build(BuildContext context) {
+    final key = (widget.at.lat, widget.at.lng);
+    final popups = ref.watch(nearbyPopupsProvider(key));
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Pop-up stalls'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: SegmentedButton<bool>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: false, icon: Icon(Icons.view_list), label: Text('List')),
+                ButtonSegment(value: true, icon: Icon(Icons.map_outlined), label: Text('Map')),
+              ],
+              selected: {_map},
+              onSelectionChanged: (v) => setState(() => _map = v.first),
+            ),
+          ),
+        ],
+      ),
+      body: AsyncView(
+        value: popups,
+        onRetry: () => ref.invalidate(nearbyPopupsProvider(key)),
+        data: (list) {
+          if (list.isEmpty) {
+            return const EmptyView(icon: Icons.storefront_outlined, title: 'No pop-up stalls near you right now',
+                message: 'Street, market and event stalls appear here while they are open.');
+          }
+          return _map ? _mapView(list) : _listView(list);
+        },
+      ),
+    );
+  }
+
+  Widget _listView(List<PublicPopup> list) {
+    final theme = Theme.of(context);
+    return RefreshIndicator(
+      onRefresh: () => ref.refresh(nearbyPopupsProvider((widget.at.lat, widget.at.lng)).future),
+      child: ListView.separated(
+        padding: const EdgeInsets.all(14),
+        itemCount: list.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, i) {
+          final p = list[i];
+          final prices = p.items.map((x) => x.priceMinor).whereType<int>().toList()..sort();
+          return Card(
+            margin: EdgeInsets.zero,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => _open(p),
+              child: Row(children: [
+                Image.network(p.items.first.imageUrl, width: 96, height: 96, fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(width: 96, height: 96, color: Colors.black12)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    _NameLine(popup: p, style: theme.textTheme.titleMedium),
+                    Text([
+                      if (p.distanceKm != null) formatDistance(p.distanceKm!),
+                      if (prices.isNotEmpty) 'from ${formatInr(prices.first)}',
+                    ].join(' · '), style: theme.textTheme.bodyMedium),
+                    Text(endsIn(p.endsAt), style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.primary)),
+                  ]),
+                ),
+                const Icon(Icons.chevron_right),
+                const SizedBox(width: 8),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _mapView(List<PublicPopup> list) {
+    final theme = Theme.of(context);
+    final you = LatLng(widget.at.lat, widget.at.lng);
+    final points = [you, for (final p in list) LatLng(p.latitude, p.longitude)];
+    return Stack(children: [
+      FlutterMap(
+        options: MapOptions(
+          initialCenter: you,
+          initialZoom: 15,
+          initialCameraFit: CameraFit.coordinates(coordinates: points, padding: const EdgeInsets.all(56), maxZoom: 17),
+          interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
+          onTap: (_, _) => setState(() => _selected = null),
+        ),
+        children: [
+          ...mapBaseLayers(),
+          MarkerLayer(markers: [
+            Marker(
+              point: you,
+              width: 22,
+              height: 22,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1565C0),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                ),
+              ),
+            ),
+            for (final p in list)
+              Marker(
+                point: LatLng(p.latitude, p.longitude),
+                width: 52,
+                height: 52,
+                child: Semantics(
+                  button: true,
+                  label: p.sellerName,
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selected = p),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: _selected?.id == p.id ? theme.colorScheme.primary : const Color(0xFF1B7F3B),
+                            width: 3),
+                        boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 2))],
+                      ),
+                      child: ClipOval(
+                        child: Image.network(p.items.first.imageUrl, fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Container(color: Colors.white,
+                                child: const Icon(Icons.storefront, color: Color(0xFF1B7F3B)))),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ]),
+        ],
+      ),
+      if (_selected != null)
+        Positioned(
+          left: 12,
+          right: 12,
+          bottom: 16,
+          child: Card(
+            elevation: 6,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => _open(_selected!),
+              child: Row(children: [
+                Image.network(_selected!.items.first.imageUrl, width: 88, height: 88, fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(width: 88, height: 88, color: Colors.black12)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    _NameLine(popup: _selected!, style: theme.textTheme.titleMedium),
+                    Text([
+                      if (_selected!.distanceKm != null) formatDistance(_selected!.distanceKm!),
+                      endsIn(_selected!.endsAt),
+                    ].join(' · '), style: theme.textTheme.bodyMedium),
+                  ]),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: FilledButton(onPressed: () => _open(_selected!), child: const Text('Open')),
+                ),
+              ]),
+            ),
+          ),
+        )
+      else
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 16,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(20)),
+              child: Text('${list.length} ${list.length == 1 ? 'stall' : 'stalls'} here now · tap a photo',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ),
+    ]);
+  }
+}
+
+class _NameLine extends StatelessWidget {
+  const _NameLine({required this.popup, this.style});
+
+  final PublicPopup popup;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        Flexible(
+          child: Text(popup.sellerName, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: style?.copyWith(fontWeight: FontWeight.w800)),
+        ),
+        if (popup.vendorId != null) ...[
+          const SizedBox(width: 4),
+          const Icon(Icons.verified, size: 18, color: Color(0xFF1565C0)),
+        ],
+      ]);
+}

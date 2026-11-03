@@ -116,8 +116,11 @@ then press Ctrl+C. The database tables are created automatically on first start.
 Flutter web is built on your computer and uploaded, the same way as SkillPeck. From the repository root:
 
 ```bash
-DOMAIN=mintadeal.com SERVER=ubuntu@<elastic-ip> KEY=~/.ssh/<your-key>.pem deploy/build-web.sh
+deploy/build-web.sh
 ```
+
+The first run asks for the domain, the server (`ubuntu@<elastic-ip>`) and your `.pem` key, and saves them in
+`deploy/web.env`, which git ignores. Later runs need nothing. Delete that file to be asked again.
 
 The script builds all four apps with `API_BASE_URL=https://api.mintadeal.com` and rsyncs them to
 `~/mintadeal/deploy/web/`. New files are served immediately, with no restart.
@@ -261,6 +264,17 @@ or on a shop's page under Vendors, overrides them for one seller.
   is, keep their fee at 0: with a fee and no Razorpay, they cannot open a stall.
 - Fees are not refunded automatically when you take a paid stall down. Refund from the Razorpay dashboard if you
   decide to.
+
+## Place names
+
+When a customer taps "Use my location", or a shop moves its pin, the API asks OpenStreetMap's free Nominatim service
+for the neighbourhood and pincode ("RT Nagar · 560032"). Answers are cached for 30 days per ~100 m and requests are
+spaced at least a second apart, as Nominatim's rules ask. If it is busy or down, the app shows the nearest listed
+area instead. Which shops a customer sees depends only on distance, never on the name.
+
+If traffic grows, set `GEOCODING_URL` in `deploy/.env` to a paid Nominatim-compatible service (for example
+LocationIQ, with its key in `GEOCODING_KEY`) or your own Nominatim, and restart `mintadeal-api`. Set
+`GEOCODING_URL=` (empty) to switch naming off.
 
 ## Road distances (optional)
 

@@ -3,7 +3,7 @@ import '../api/mintadeal_api.dart';
 /// Where the customer browses from: a Bengaluru neighbourhood, or their own location named after the
 /// nearest neighbourhood ([precise]).
 class Area {
-  const Area(this.name, this.lat, this.lng, {this.precise = false});
+  const Area(this.name, this.lat, this.lng, {this.precise = false, this.pincode});
 
   final String name;
   final double lat;
@@ -11,6 +11,9 @@ class Area {
 
   /// From the device's location rather than the centre of a neighbourhood.
   final bool precise;
+
+  /// The pincode at a device location, when OpenStreetMap knows it.
+  final String? pincode;
 
   GeoPoint get point => GeoPoint(lat, lng);
 }

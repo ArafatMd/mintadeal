@@ -218,6 +218,7 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
           scope: _scope,
           areaName: area.name,
           precise: area.precise,
+          pincode: area.pincode,
           onArea: () => pickArea(context, ref),
           onScope: (s) => setState(() => _scope = s),
           onSearch: (text) {
@@ -271,6 +272,7 @@ class _Header extends StatelessWidget {
     required this.scope,
     required this.areaName,
     required this.precise,
+    this.pincode,
     required this.onArea,
     required this.onScope,
     required this.onSearch,
@@ -282,6 +284,7 @@ class _Header extends StatelessWidget {
 
   /// From the device location: the kicker says "near you" and the name is the nearest area.
   final bool precise;
+  final String? pincode;
   final VoidCallback onArea;
   final ValueChanged<FeedScope> onScope;
   final ValueChanged<String> onSearch;
@@ -301,7 +304,7 @@ class _Header extends StatelessWidget {
         const SizedBox(width: 4),
         Flexible(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(nearby ? (precise ? 'DEALS NEAR YOU' : 'NEARBY DEALS') : 'DEALS IN BENGALURU',
+            Text(nearby ? (precise ? 'DEALS NEAR YOU${pincode == null ? '' : ' · $pincode'}' : 'NEARBY DEALS') : 'DEALS IN BENGALURU',
                 maxLines: 1,
                 style: theme.textTheme.labelSmall?.copyWith(
                     color: ink.withValues(alpha: 0.7), letterSpacing: 1.4, fontWeight: FontWeight.w600)),
@@ -444,19 +447,19 @@ class _CategoryRail extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: () => onSelected(isSelected ? null : c),
         child: SizedBox(
-          width: 76,
+          width: 64,
           child: Column(children: [
             Container(
-              width: 60,
-              height: 60,
+              width: 46,
+              height: 46,
               decoration: BoxDecoration(color: c?.tint ?? const Color(0xFFFFE4E6), shape: BoxShape.circle),
-              child: Icon(c?.icon ?? Icons.grid_view_rounded, size: 28, color: c == null ? red : MintadealColors.charcoal),
+              child: Icon(c?.icon ?? Icons.grid_view_rounded, size: 22, color: c == null ? red : MintadealColors.charcoal),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(c?.label ?? 'All',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelMedium?.copyWith(
+                style: theme.textTheme.labelSmall?.copyWith(
                   color: isSelected ? red : theme.colorScheme.onSurface,
                   fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                 )),
@@ -464,7 +467,7 @@ class _CategoryRail extends StatelessWidget {
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               height: 3,
-              width: isSelected ? 36 : 0,
+              width: isSelected ? 28 : 0,
               decoration: BoxDecoration(color: red, borderRadius: BorderRadius.circular(2)),
             ),
           ]),
@@ -473,10 +476,10 @@ class _CategoryRail extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 112,
+      height: 88,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.only(top: 10),
         children: [tile(null), for (final c in VendorCategory.values) tile(c)],
       ),
     );

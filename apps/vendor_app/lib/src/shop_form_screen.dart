@@ -26,6 +26,12 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
   late GeoPoint _pin;
   bool _pinned = false;
   bool _locating = false;
+
+  /// The neighbourhood at the pin, from OpenStreetMap, shown under the map.
+  String? _placeName;
+
+  /// The pincode we filled in ourselves, so a pincode the owner typed is never overwritten.
+  String? _autoPincode;
   String? _logoUrl;
   String? _coverUrl;
   bool _selfDelivery = false;
@@ -90,11 +96,26 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
         _pinned = true;
         _area = nearestArea(p);
       });
+      _namePin(p);
     } on LocationProblem catch (e) {
       if (mounted) showMessage(context, e.message);
     } finally {
       if (mounted) setState(() => _locating = false);
     }
+  }
+
+  /// Looks up the neighbourhood and pincode at the pin, and fills the pincode unless the owner typed one.
+  Future<void> _namePin(GeoPoint p) async {
+    final place = await ref.read(apiProvider).place(p);
+    if (!mounted || place == null || _pin != p) return;
+    setState(() {
+      _placeName = place.name;
+      final pin = _text['pincode']!;
+      if (place.pincode != null && (pin.text.trim().isEmpty || pin.text.trim() == _autoPincode)) {
+        pin.text = place.pincode!;
+        _autoPincode = place.pincode;
+      }
+    });
   }
 
   Map<String, dynamic> _payload() {
@@ -263,12 +284,22 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
             PinMap(
               point: _pin,
               zoom: _pinned ? 17 : 15,
-              onMoved: (p) => setState(() {
+              onMoved: (p) {
                 // Moving the map by even a little means the owner is placing the pin.
-                if (distanceKm(p, _pin) > 0.005) _pinned = true;
-                _pin = p;
-              }),
+                final moved = distanceKm(p, _pin) > 0.005;
+                setState(() {
+                  if (moved) _pinned = true;
+                  _pin = p;
+                });
+                if (moved) _namePin(p);
+              },
             ),
+            if (_placeName != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text('Pin is in $_placeName${_autoPincode == null ? '' : ' · pincode $_autoPincode filled in'}',
+                    style: Theme.of(context).textTheme.bodySmall),
+              ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: _locating ? null : _useMyLocation,

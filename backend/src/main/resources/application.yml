@@ -73,6 +73,11 @@ mintadeal:
     max-items: 6
     max-per-day: 3
     hide-after-reports: 3
+  geocoding:
+    # Names a customer's or shop's location ("RT Nagar, 560032") from OpenStreetMap. Empty turns it off.
+    url: ${GEOCODING_URL:https://nominatim.openstreetmap.org}
+    key: ${GEOCODING_KEY:}
+    timeout: 3s
   routing:
     # Road distances from a self-hosted OSRM server (see docs/ROUTING.md). Empty: straight-line distances.
     osrm-url: ${OSRM_URL:}

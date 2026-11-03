@@ -47,6 +47,9 @@ services:
       TZ: Asia/Kolkata
       # Road distances; empty until the optional mintadeal-osrm service is set up (docs/ROUTING.md).
       OSRM_URL: ${OSRM_URL:-}
+      # Place names from OpenStreetMap; see docs/DEPLOY.md, Place names.
+      GEOCODING_URL: ${GEOCODING_URL:-https://nominatim.openstreetmap.org}
+      GEOCODING_KEY: ${GEOCODING_KEY:-}
     volumes:
       - files:/data/files
     # The image has no curl, so bash opens the connection itself. Unhealthy containers show in `docker ps`.

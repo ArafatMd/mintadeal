@@ -22,3 +22,5 @@ mintadeal:
     synchronous: true
   rate-limit:
     enabled: false
+  geocoding:
+    url: ""

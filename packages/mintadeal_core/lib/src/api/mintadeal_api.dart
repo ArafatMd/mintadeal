@@ -57,6 +57,17 @@ class MintadealApi {
     return (j['deleted'] as bool? ?? false, j['message'] as String? ?? '');
   }
 
+  /// The neighbourhood and pincode at [at], e.g. ("RT Nagar", "560032"); null when not known or the lookup fails.
+  Future<({String? name, String? pincode})?> place(GeoPoint at) async {
+    try {
+      final j = await client.get('/api/discovery/place', query: {'lat': at.lat, 'lng': at.lng});
+      if (j is! Json) return null;
+      return (name: j['name'] as String?, pincode: j['pincode'] as String?);
+    } on Object {
+      return null;
+    }
+  }
+
   // --- Pop-up stalls ---
 
   Future<PopupMe> popupMe() async => PopupMe.fromJson(await client.get('/api/popup/me') as Json);

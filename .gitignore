@@ -26,6 +26,7 @@ build/
 # Deployment
 deploy/.env
 deploy/backups/
+deploy/web.env
 deploy/osrm/
 deploy/web/
 

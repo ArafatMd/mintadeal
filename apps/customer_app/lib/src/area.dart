@@ -23,7 +23,7 @@ class AreaController extends Notifier<Area> {
       try {
         final j = jsonDecode(saved) as Map<String, dynamic>;
         state = Area(j['name'] as String, (j['lat'] as num).toDouble(), (j['lng'] as num).toDouble(),
-            precise: j['precise'] == true);
+            precise: j['precise'] == true, pincode: j['pincode'] as String?);
         return;
       } on Object {
         // Fall through to the default area.
@@ -36,11 +36,26 @@ class AreaController extends Notifier<Area> {
   Future<void> choose(Area area) async {
     state = area;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, jsonEncode({'name': area.name, 'lat': area.lat, 'lng': area.lng, 'precise': area.precise}));
+    await prefs.setString(_key, jsonEncode({
+      'name': area.name,
+      'lat': area.lat,
+      'lng': area.lng,
+      'precise': area.precise,
+      'pincode': area.pincode,
+    }));
   }
 
-  /// Browses from the device's position, named after the nearest listed area.
-  Future<void> useLocation(GeoPoint p) => choose(Area(nearestArea(p).name, p.lat, p.lng, precise: true));
+  /// Browses from the device's position. It is named after its neighbourhood and pincode from OpenStreetMap
+  /// ("RT Nagar", 560032), or the nearest listed area when that is not known. Shops shown still depend only on
+  /// the distance from this point, not on the name.
+  Future<void> useLocation(GeoPoint p) async {
+    // Switch straight away with the nearest area's name, then put the real name in when it arrives.
+    await choose(Area(nearestArea(p).name, p.lat, p.lng, precise: true));
+    final place = await ref.read(apiProvider).place(p);
+    if (place?.name != null && state.lat == p.lat && state.lng == p.lng) {
+      await choose(Area(place!.name!, p.lat, p.lng, precise: true, pincode: place.pincode));
+    }
+  }
 }
 
 final areaProvider = NotifierProvider<AreaController, Area>(AreaController.new);
@@ -83,7 +98,9 @@ Future<void> pickArea(BuildContext context, WidgetRef ref) async {
               leading: Icon(Icons.my_location, color: Theme.of(context).colorScheme.primary),
               title: Text('Use my current location',
                   style: TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary)),
-              subtitle: Text(current.precise ? 'Using it now · tap to refresh' : 'For distances from where you are'),
+              subtitle: Text(current.precise
+                  ? 'Using it now: ${[current.name, ?current.pincode].join(' · ')} · tap to refresh'
+                  : 'For distances from where you are'),
               onTap: () => Navigator.pop(context, 'gps'),
             ),
             const Divider(height: 1),

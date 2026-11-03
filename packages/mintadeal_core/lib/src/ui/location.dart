@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../api/mintadeal_api.dart';
+import '../config.dart';
 import '../models/areas.dart';
 
 /// Why the device location could not be read, in words for the person.
@@ -57,6 +58,16 @@ bool inBengaluru(GeoPoint p) => distanceKm(p, _cityCentre) <= _cityRadiusKm;
 /// The listed area closest to [p], used to name a GPS position ("Near HSR Layout").
 Area nearestArea(GeoPoint p) =>
     bengaluruAreas.reduce((best, a) => distanceKm(p, a.point) < distanceKm(p, best.point) ? a : best);
+
+/// The map picture and its required credit, for every map in the apps.
+List<Widget> mapBaseLayers() => [
+      TileLayer(urlTemplate: AppConfig.tileUrl, userAgentPackageName: 'com.mintadeal.app'),
+      const RichAttributionWidget(
+        alignment: AttributionAlignment.bottomLeft,
+        showFlutterMapAttribution: false,
+        attributions: [TextSourceAttribution(AppConfig.tileCredit)],
+      ),
+    ];
 
 /// An OpenStreetMap map with a pin in the middle.
 ///
@@ -118,15 +129,7 @@ class _PinMapState extends State<PinMap> {
                   : null,
             ),
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.mintadeal.app',
-              ),
-              const RichAttributionWidget(
-                alignment: AttributionAlignment.bottomLeft,
-                showFlutterMapAttribution: false,
-                attributions: [TextSourceAttribution('© OpenStreetMap contributors')],
-              ),
+              ...mapBaseLayers(),
             ],
           ),
           // The pin's tip sits exactly on the map centre.

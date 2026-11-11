@@ -43,6 +43,23 @@ Future<GeoPoint> currentLocation() async {
   }
 }
 
+/// The device's position if the person has already allowed location, without asking; null otherwise.
+///
+/// Used to refresh a saved location quietly when the app opens. Never shows a permission prompt and never fails.
+Future<GeoPoint?> currentLocationIfAllowed() async {
+  try {
+    if (!await Geolocator.isLocationServiceEnabled()) return null;
+    final permission = await Geolocator.checkPermission();
+    if (permission != LocationPermission.whileInUse && permission != LocationPermission.always) return null;
+    final p = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 15)),
+    );
+    return GeoPoint(p.latitude, p.longitude);
+  } on Object {
+    return null;
+  }
+}
+
 /// Straight-line distance in km.
 double distanceKm(GeoPoint a, GeoPoint b) {
   const r = 6371.0;

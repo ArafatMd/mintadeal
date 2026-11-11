@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -8,22 +9,53 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AreaController extends Notifier<Area> {
   static const _key = 'mintadeal.area';
 
+  final _restored = Completer<void>();
+
+  /// True when the person picked an area from the list themselves: the app then leaves it alone until they tap
+  /// "Use my location", so browsing another neighbourhood is not undone every time the app opens.
+  bool pickedByHand = false;
+
+  /// True once a location or area has ever been saved on this device.
+  bool hasSaved = false;
+
   @override
   Area build() {
-    _restore();
+    _restore().whenComplete(() {
+      if (!_restored.isCompleted) _restored.complete();
+    });
     return bengaluruAreas.first;
+  }
+
+  /// Moves to where the device is now, if location is already allowed (or, with [ask], after asking). Does nothing
+  /// when the person picked an area by hand, or has moved less than about 200 m. Returns false when the location
+  /// could not be read.
+  Future<bool> refreshFromDevice({bool ask = false}) async {
+    await _restored.future;
+    if (pickedByHand && !ask) return true;
+    final GeoPoint? p;
+    try {
+      p = ask ? await currentLocation() : await currentLocationIfAllowed();
+    } on LocationProblem {
+      return false;
+    }
+    if (p == null || !inBengaluru(p)) return false;
+    if (state.precise && distanceKm(state.point, p) < 0.2) return true;
+    await useLocation(p);
+    return true;
   }
 
   Future<void> _restore() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_key);
     if (saved == null) return;
+    hasSaved = true;
     // Saved as JSON since the location update; earlier versions saved just the area's name.
     if (saved.startsWith('{')) {
       try {
         final j = jsonDecode(saved) as Map<String, dynamic>;
         state = Area(j['name'] as String, (j['lat'] as num).toDouble(), (j['lng'] as num).toDouble(),
             precise: j['precise'] == true, pincode: j['pincode'] as String?);
+        pickedByHand = j['precise'] != true;
         return;
       } on Object {
         // Fall through to the default area.
@@ -31,10 +63,13 @@ class AreaController extends Notifier<Area> {
     }
     final match = bengaluruAreas.where((a) => a.name == saved);
     state = match.isNotEmpty ? match.first : bengaluruAreas.first;
+    pickedByHand = true;
   }
 
   Future<void> choose(Area area) async {
     state = area;
+    hasSaved = true;
+    pickedByHand = !area.precise;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_key, jsonEncode({
       'name': area.name,

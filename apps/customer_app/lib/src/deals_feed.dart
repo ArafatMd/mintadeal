@@ -39,7 +39,7 @@ class DealsFeed extends ConsumerStatefulWidget {
   ConsumerState<DealsFeed> createState() => _DealsFeedState();
 }
 
-class _DealsFeedState extends ConsumerState<DealsFeed> {
+class _DealsFeedState extends ConsumerState<DealsFeed> with WidgetsBindingObserver {
   FeedScope _scope = FeedScope.nearby;
   VendorCategory? _category;
   ListingType? _type;
@@ -51,12 +51,39 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
   static const _promptKey = 'mintadeal.locationPromptDismissed';
   bool _promptDismissed = true;
 
+  /// Asked for location once, on the very first open; after that it is only read quietly, or when tapped.
+  static const _askedKey = 'mintadeal.locationAsked';
+  DateTime _lastLocated = DateTime.fromMillisecondsSinceEpoch(0);
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     SharedPreferences.getInstance().then((p) {
       if (mounted) setState(() => _promptDismissed = p.getBool(_promptKey) ?? false);
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _locate(opening: true));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Back in the app after a while: the person may have moved.
+    if (state == AppLifecycleState.resumed && DateTime.now().difference(_lastLocated) > const Duration(minutes: 3)) {
+      _locate(opening: false);
+    }
+  }
+
+  /// Keeps "near you" current: reads the location when it is already allowed, and asks for it once on the very
+  /// first open. An area the person picked by hand is left as it is.
+  Future<void> _locate({required bool opening}) async {
+    _lastLocated = DateTime.now();
+    final area = ref.read(areaProvider.notifier);
+    final ok = await area.refreshFromDevice();
+    if (ok || !opening || !mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (area.hasSaved || (prefs.getBool(_askedKey) ?? false)) return;
+    await prefs.setBool(_askedKey, true);
+    await area.refreshFromDevice(ask: true);
   }
 
   Future<void> _dismissPrompt() async {
@@ -67,6 +94,7 @@ class _DealsFeedState extends ConsumerState<DealsFeed> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _debounce?.cancel();
     super.dispose();
   }

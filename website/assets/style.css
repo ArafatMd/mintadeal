@@ -329,3 +329,17 @@ footer .fine { border-top: 1px solid #2a2a2e; margin-top: 50px; padding-top: 24p
   .cta-band { padding: 48px 22px; border-radius: 24px; }
   footer .cols { grid-template-columns: 1fr; }
 }
+
+/* Pricing page */
+.way .price-big { font-size: 30px; font-weight: 800; color: var(--red, #EB0A1E); margin: 4px 0 8px; }
+.way .price-big small { font-size: 14px; font-weight: 600; color: var(--muted, #6b6b76); }
+.price-table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 16px; }
+.price-table th, .price-table td { text-align: left; padding: 12px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+.price-table th { font-size: 14px; color: var(--muted, #6b6b76); font-weight: 700; }
+@media (max-width: 640px) {
+  .price-table, .price-table tbody, .price-table tr, .price-table td { display: block; width: 100%; }
+  .price-table thead { display: none; }
+  .price-table tr { padding: 10px 0; border-bottom: 1px solid #eee; }
+  .price-table td { border: 0; padding: 2px 0; }
+  .price-table td:first-child { font-weight: 700; }
+}

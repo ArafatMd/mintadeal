@@ -61,6 +61,8 @@
     const key = el.getAttribute("data-fill");
     let value = cfg[key];
     if (key === "legalName" && !value) value = "Mintadeal";
+    // WhatsApp is the support phone unless a different number is set.
+    if (key === "whatsapp" && !value) value = cfg.phone;
     if (!value) return todo(el);
     if (key === "phone" || key === "whatsapp") {
       const digits = value.replace(/\D/g, "").slice(-10);

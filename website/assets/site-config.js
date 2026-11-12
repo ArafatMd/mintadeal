@@ -5,7 +5,7 @@ window.MINTADEAL = {
   // Registered business name, e.g. "Mintadeal Retail Private Limited" or your proprietorship's name.
   legalName: "",
   // Support phone (10 digits) and WhatsApp number, if different.
-  phone: "",
+  phone: "9513085599",
   whatsapp: "",
   email: "",
   // Registered business address, on one line.

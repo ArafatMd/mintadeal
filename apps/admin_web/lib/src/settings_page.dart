@@ -60,6 +60,9 @@ const _fields = {
     _Field('languageCode', 'Template language', hint: 'en'),
     _Field('newOrderTemplate', 'New order template (to shops)', help: 'Body: {{1}} order, {{2}} items, {{3}} total, {{4}} fulfilment'),
     _Field('orderUpdateTemplate', 'Order update template (to customers)', help: 'Body: {{1}} order, {{2}} shop, {{3}} what happened'),
+    _Field('loginCodeTemplate', 'Sign-in code template (optional)',
+        hint: 'Leave empty to send sign-in codes by SMS only',
+        help: 'An Authentication template with a "Copy code" button. When set, people can get their sign-in code on WhatsApp if the SMS does not arrive.'),
   ],
   IntegrationProvider.TWO_FACTOR: [
     _Field('apiKey', 'API key', secret: true, help: '2factor.in → API keys'),

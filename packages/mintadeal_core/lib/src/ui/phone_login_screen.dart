@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,21 +29,47 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
   bool _codeSent = false;
   bool _busy = false;
 
+  /// Whether the code went on WhatsApp, and whether WhatsApp can be offered when the SMS does not arrive.
+  bool _sentOnWhatsApp = false;
+  bool _whatsAppAvailable = false;
+
+  /// Seconds before another code can be asked for (the server allows one every 30 seconds).
+  static const _wait = 30;
+  int _secondsLeft = 0;
+  Timer? _timer;
+
   @override
   void dispose() {
+    _timer?.cancel();
     _phone.dispose();
     _code.dispose();
     super.dispose();
   }
 
-  Future<void> _sendCode() async {
+  void _startCountdown() {
+    _timer?.cancel();
+    setState(() => _secondsLeft = _wait);
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return t.cancel();
+      setState(() => _secondsLeft--);
+      if (_secondsLeft <= 0) t.cancel();
+    });
+  }
+
+  Future<void> _sendCode({bool onWhatsApp = false}) async {
     if (_phone.text.trim().length < 10) {
       showMessage(context, 'Enter your 10-digit mobile number');
       return;
     }
     await _run(() async {
-      await ref.read(sessionProvider.notifier).requestOtp(_phone.text.trim());
-      setState(() => _codeSent = true);
+      final sent = await ref.read(sessionProvider.notifier).requestOtp(_phone.text.trim(), onWhatsApp: onWhatsApp);
+      setState(() {
+        _codeSent = true;
+        _sentOnWhatsApp = onWhatsApp;
+        _whatsAppAvailable = sent.whatsApp;
+        _code.clear();
+      });
+      _startCountdown();
     });
   }
 
@@ -117,6 +145,20 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                       decoration: const InputDecoration(labelText: '6-digit code'),
                       onSubmitted: (_) => _verify(),
                     ),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Icon(_sentOnWhatsApp ? Icons.chat : Icons.sms_outlined, size: 18,
+                          color: theme.colorScheme.onSurfaceVariant),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _sentOnWhatsApp
+                              ? 'Code sent on WhatsApp to +91 ${_phone.text.trim()}'
+                              : 'Code sent by SMS to +91 ${_phone.text.trim()}',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    ]),
                   ],
                   const SizedBox(height: 20),
                   FilledButton(
@@ -125,16 +167,41 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                         : Text(_codeSent ? 'Verify and continue' : 'Send code'),
                   ),
-                  if (_codeSent)
+                  if (_codeSent) ...[
+                    const SizedBox(height: 12),
+                    if (_secondsLeft > 0)
+                      Text('Didn\'t get it? You can ask again in $_secondsLeft s',
+                          textAlign: TextAlign.center, style: theme.textTheme.bodySmall)
+                    else ...[
+                      if (_whatsAppAvailable && !_sentOnWhatsApp)
+                        OutlinedButton.icon(
+                          onPressed: _busy ? null : () => _sendCode(onWhatsApp: true),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF128C3E),
+                            side: const BorderSide(color: Color(0xFF128C3E)),
+                          ),
+                          icon: const Icon(Icons.chat),
+                          label: const Text('Get the code on WhatsApp'),
+                        ),
+                      TextButton(
+                        onPressed: _busy ? null : () => _sendCode(),
+                        child: const Text('Send the code by SMS again'),
+                      ),
+                    ],
                     TextButton(
                       onPressed: _busy
                           ? null
-                          : () => setState(() {
+                          : () {
+                              _timer?.cancel();
+                              setState(() {
                                 _codeSent = false;
+                                _secondsLeft = 0;
                                 _code.clear();
-                              }),
+                              });
+                            },
                       child: const Text('Change number'),
                     ),
+                  ],
                 ],
               ),
             ),

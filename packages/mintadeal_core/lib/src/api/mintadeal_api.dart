@@ -31,7 +31,11 @@ class MintadealApi {
 
   // --- Auth & profile ---
 
-  Future<void> requestOtp(String phone) => client.post('/api/auth/otp/request', {'phone': phone});
+  /// Sends a sign-in code, by SMS or on WhatsApp. Returns whether WhatsApp can be offered as well.
+  Future<({bool whatsApp})> requestOtp(String phone, {bool onWhatsApp = false}) async {
+    final j = await client.post('/api/auth/otp/request', {'phone': phone, if (onWhatsApp) 'channel': 'WHATSAPP'});
+    return (whatsApp: j is Json && j['whatsApp'] == true);
+  }
 
   Future<AuthResult> verifyOtp(String phone, String code) async {
     final j = await client.post('/api/auth/otp/verify', {'phone': phone, 'code': code}) as Json;

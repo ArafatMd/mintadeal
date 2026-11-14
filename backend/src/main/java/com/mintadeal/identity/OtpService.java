@@ -23,21 +23,40 @@ import com.mintadeal.common.ApiException;
 @Service
 public class OtpService {
 
+    /** How the code is sent: by SMS, or on WhatsApp when the SMS did not arrive. */
+    public enum Channel { SMS, WHATSAPP }
+
     private final OtpChallengeRepository challenges;
     private final SmsSender sms;
+    private final WhatsAppCodes whatsApp;
     private final OtpProperties props;
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
-    public OtpService(OtpChallengeRepository challenges, SmsSender sms, OtpProperties props, Clock clock) {
+    public OtpService(OtpChallengeRepository challenges, SmsSender sms, WhatsAppCodes whatsApp, OtpProperties props,
+                      Clock clock) {
+        this.whatsApp = whatsApp;
         this.challenges = challenges;
         this.sms = sms;
         this.props = props;
         this.clock = clock;
     }
 
+    /** Whether codes can be sent on WhatsApp, so the apps can offer it. */
+    public boolean whatsAppAvailable() {
+        return whatsApp.available();
+    }
+
     @Transactional
     public void issue(String phone) {
+        issue(phone, Channel.SMS);
+    }
+
+    @Transactional
+    public void issue(String phone, Channel channel) {
+        if (channel == Channel.WHATSAPP && !whatsApp.available()) {
+            throw ApiException.badRequest("whatsapp_unavailable", "Codes on WhatsApp are not available. Try SMS.");
+        }
         Instant now = clock.instant();
         challenges.findFirstByPhoneOrderByCreatedAtDesc(phone).ifPresent(last -> {
             if (last.getCreatedAt().plus(props.resendCooldown()).isAfter(now)) {
@@ -51,11 +70,14 @@ public class OtpService {
         }
         // The fixed development code is only used while no SMS provider is switched on.
         boolean review = props.isReviewPhone(phone);
-        boolean fixed = review || StringUtils.hasText(props.devFixedCode()) && !sms.delivers();
+        boolean delivers = channel == Channel.WHATSAPP || sms.delivers();
+        boolean fixed = review || StringUtils.hasText(props.devFixedCode()) && !delivers;
         String code = review ? props.reviewCode()
                 : fixed ? props.devFixedCode() : String.format("%06d", random.nextInt(1_000_000));
         challenges.save(new OtpChallenge(phone, hash(phone, code), now, now.plus(props.ttl())));
-        if (!fixed) {
+        if (!fixed && channel == Channel.WHATSAPP) {
+            whatsApp.send(phone, code);
+        } else if (!fixed) {
             sms.sendOtp(phone, code);
         }
     }

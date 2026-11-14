@@ -14,8 +14,12 @@ public enum IntegrationProvider {
     TWO_FACTOR(List.of("templateName"), List.of("apiKey"), List.of("apiKey")),
     /** Automatic payouts to shops. Uses the Razorpay API keys; needs a RazorpayX current account. */
     RAZORPAYX(List.of("accountNumber"), List.of(), List.of("accountNumber")),
-    /** WhatsApp Cloud API (Meta) for order alerts, sent with approved message templates. */
-    WHATSAPP(List.of("phoneNumberId", "languageCode", "newOrderTemplate", "orderUpdateTemplate"), List.of("accessToken"),
+    /**
+     * WhatsApp Cloud API (Meta) for order alerts, sent with approved message templates; with a login code template
+     * (Authentication category, copy-code button) it also sends sign-in codes when the SMS does not arrive.
+     */
+    WHATSAPP(List.of("phoneNumberId", "languageCode", "newOrderTemplate", "orderUpdateTemplate", "loginCodeTemplate"),
+            List.of("accessToken"),
             List.of("phoneNumberId", "newOrderTemplate", "orderUpdateTemplate", "accessToken"));
 
     private final List<String> configFields;

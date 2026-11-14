@@ -29,7 +29,8 @@ class SessionController extends AsyncNotifier<Session?> {
     return Session(token, AppUser.fromJson(jsonDecode(user) as Json));
   }
 
-  Future<void> requestOtp(String phone) => ref.read(apiProvider).requestOtp(phone);
+  Future<({bool whatsApp})> requestOtp(String phone, {bool onWhatsApp = false}) =>
+      ref.read(apiProvider).requestOtp(phone, onWhatsApp: onWhatsApp);
 
   Future<AppUser> verifyOtp(String phone, String code) async {
     final result = await ref.read(apiProvider).verifyOtp(phone, code);

@@ -265,6 +265,22 @@ or on a shop's page under Vendors, overrides them for one seller.
 - Fees are not refunded automatically when you take a paid stall down. Refund from the Razorpay dashboard if you
   decide to.
 
+## Sign-in codes on WhatsApp (fallback for SMS)
+
+When a customer, shop or rider asks for a code and it has not arrived after 30 seconds, the sign-in screen offers
+"Get the code on WhatsApp". It appears only once WhatsApp is switched on in the admin website and a sign-in code
+template is set:
+
+1. In Meta's WhatsApp Manager → Message templates → Create template, choose category **Authentication**.
+2. Name it, e.g. `mintadeal_login_code`, language **English** (the same language code as in the admin website),
+   and choose the **Copy code** button. Meta writes the text itself ("*123456* is your verification code..."); you
+   can add the security note and an expiry of 5 minutes.
+3. Submit it. Authentication templates are usually approved within minutes to a few hours.
+4. Admin website → Integrations → WhatsApp → **Sign-in code template**: enter the name, save.
+
+Each code sent on WhatsApp is charged by Meta as an authentication conversation, usually cheaper than an SMS in India.
+Codes still go by SMS first; WhatsApp is only used when someone taps the button.
+
 ## Place names
 
 When a customer taps "Use my location", or a shop moves its pin, the API asks OpenStreetMap's free Nominatim service

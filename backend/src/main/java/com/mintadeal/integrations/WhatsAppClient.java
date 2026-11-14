@@ -55,6 +55,32 @@ public class WhatsAppClient {
         return res.body().path("messages").path(0).path("id").asString(null);
     }
 
+    /**
+     * Sends a sign-in code with an Authentication template: the code fills the body and the copy-code button, as
+     * Meta requires for that category.
+     */
+    public String sendAuthCode(Resolved cfg, String e164Phone, String template, String code) {
+        String language = cfg.get("languageCode") == null ? "en" : cfg.get("languageCode");
+        Map<String, Object> body = Map.of(
+                "messaging_product", "whatsapp",
+                "to", e164Phone.replace("+", ""),
+                "type", "template",
+                "template", Map.of(
+                        "name", template,
+                        "language", Map.of("code", language),
+                        "components", List.of(
+                                Map.of("type", "body", "parameters", List.of(Map.of("type", "text", "text", code))),
+                                Map.of("type", "button", "sub_type", "url", "index", "0",
+                                        "parameters", List.of(Map.of("type", "text", "text", code))))));
+        HttpJson.Response res = http.post(props.whatsappBaseUrl() + "/" + cfg.get("phoneNumberId") + "/messages",
+                auth(cfg), body);
+        if (!res.ok()) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "whatsapp_error",
+                    "WhatsApp: " + res.body().path("error").path("message").asString("HTTP " + res.status()));
+        }
+        return res.body().path("messages").path(0).path("id").asString(null);
+    }
+
     /** Checks the token and phone number id; returns the business phone number. */
     public String check(Resolved cfg) {
         HttpJson.Response res = http.get(props.whatsappBaseUrl() + "/" + cfg.get("phoneNumberId")

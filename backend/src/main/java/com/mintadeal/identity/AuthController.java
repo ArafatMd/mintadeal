@@ -24,7 +24,12 @@ public class AuthController {
         this.tokens = tokens;
     }
 
-    public record OtpRequest(@NotBlank String phone) {
+    /** @param channel SMS (the default), or WHATSAPP when the SMS did not arrive */
+    public record OtpRequest(@NotBlank String phone, OtpService.Channel channel) {
+    }
+
+    /** @param whatsApp whether the app may offer "Get the code on WhatsApp" */
+    public record OtpSent(OtpService.Channel channel, boolean whatsApp) {
     }
 
     public record OtpVerify(@NotBlank String phone, @NotBlank String code) {
@@ -35,8 +40,10 @@ public class AuthController {
 
     @PostMapping("/otp/request")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public void requestOtp(@Valid @RequestBody OtpRequest req) {
-        otp.issue(PhoneNumbers.normalize(req.phone()));
+    public OtpSent requestOtp(@Valid @RequestBody OtpRequest req) {
+        OtpService.Channel channel = req.channel() == null ? OtpService.Channel.SMS : req.channel();
+        otp.issue(PhoneNumbers.normalize(req.phone()), channel);
+        return new OtpSent(channel, otp.whatsAppAvailable());
     }
 
     /**

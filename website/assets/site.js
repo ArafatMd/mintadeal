@@ -97,6 +97,21 @@
   };
   document.querySelectorAll("[data-fill]").forEach((el) => {
     const key = el.getAttribute("data-fill");
+    if (key === "grievanceOfficer") {
+      // Each officer's name with their own mail link.
+      const officers = cfg.grievanceOfficers || [];
+      if (!officers.length) return todo(el);
+      el.textContent = "";
+      officers.forEach((o, i) => {
+        if (i) el.append(i === officers.length - 1 ? " and " : ", ");
+        el.append(o.name + " (");
+        const link = document.createElement("a");
+        link.href = "mailto:" + o.email;
+        link.textContent = o.email;
+        el.append(link, ")");
+      });
+      return;
+    }
     let value = cfg[key];
     if (key === "legalName" && !value) value = "Mintadeal";
     // WhatsApp is the support phone unless a different number is set.

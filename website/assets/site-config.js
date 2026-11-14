@@ -7,12 +7,15 @@ window.MINTADEAL = {
   // Support phone (10 digits) and WhatsApp number, if different.
   phone: "9513085599",
   whatsapp: "",
-  email: "",
+  email: "customercare@mintadeal.com",
   // Registered business address, on one line.
   address: "No 59, 2nd Main, RT Nagar, Bengaluru 560032, Karnataka",
   // Grievance officer, required for online marketplaces in India (Consumer Protection (E-Commerce) Rules, 2020).
-  grievanceOfficer: "",
-  // One address, or several separated by commas.
+  grievanceOfficers: [
+    { name: "Sameer Adiga", email: "Adiga.Sameer@mintadeal.com" },
+    { name: "Md Salman", email: "Md.salman@mintadeal.com" },
+  ],
+  // Shared complaint addresses, shown with the officers; one or several separated by commas.
   grievanceEmail: "help@mintadeal.com, customercare@mintadeal.com",
 
   appUrl: "https://app.mintadeal.com",

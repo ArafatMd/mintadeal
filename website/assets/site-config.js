@@ -18,6 +18,8 @@ window.MINTADEAL = {
   // Shared complaint addresses, shown with the officers; one or several separated by commas.
   grievanceEmail: "help@mintadeal.com, customercare@mintadeal.com",
 
+  // Live deals on the website come from here.
+  apiUrl: "https://api.mintadeal.com",
   appUrl: "https://app.mintadeal.com",
   shopUrl: "https://shop.mintadeal.com",
 };

@@ -52,6 +52,15 @@ class _DealsFeedState extends ConsumerState<DealsFeed> with WidgetsBindingObserv
   static const _promptKey = 'mintadeal.locationPromptDismissed';
   bool _promptDismissed = true;
 
+  /// A product linked from mintadeal.com (`app.mintadeal.com/?listing=<id>`) opens straight away, ready to buy.
+  void _openLinkedListing() {
+    final id = Uri.base.queryParameters['listing'];
+    if (id == null || id.isEmpty || !mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ListingDetailScreen(listingId: id, at: ref.read(areaProvider).point),
+    ));
+  }
+
   /// Asked for location once, on the very first open; after that it is only read quietly, or when tapped.
   static const _askedKey = 'mintadeal.locationAsked';
   DateTime _lastLocated = DateTime.fromMillisecondsSinceEpoch(0);
@@ -63,7 +72,10 @@ class _DealsFeedState extends ConsumerState<DealsFeed> with WidgetsBindingObserv
     SharedPreferences.getInstance().then((p) {
       if (mounted) setState(() => _promptDismissed = p.getBool(_promptKey) ?? false);
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _locate(opening: true));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _openLinkedListing();
+      _locate(opening: true);
+    });
   }
 
   @override

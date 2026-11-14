@@ -43,7 +43,8 @@ services:
       REVIEW_PHONES: ${REVIEW_PHONES:-}
       REVIEW_CODE: ${REVIEW_CODE:-}
       PUBLIC_BASE_URL: https://api.${DOMAIN:?set DOMAIN}
-      CORS_ORIGINS: https://app.${DOMAIN},https://shop.${DOMAIN},https://admin.${DOMAIN},https://rider.${DOMAIN}
+      # The website (mintadeal.com) reads live deals for its Deals page.
+      CORS_ORIGINS: https://${DOMAIN},https://www.${DOMAIN},https://app.${DOMAIN},https://shop.${DOMAIN},https://admin.${DOMAIN},https://rider.${DOMAIN}
       TZ: Asia/Kolkata
       # Road distances; empty until the optional mintadeal-osrm service is set up (docs/ROUTING.md).
       OSRM_URL: ${OSRM_URL:-}

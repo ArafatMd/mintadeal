@@ -202,10 +202,11 @@ class _DealsFeedState extends ConsumerState<DealsFeed> with WidgetsBindingObserv
       ListingType.OFFER => 'Venue offers',
     };
     final header = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      // One card at a time: the install offer waits until location is sorted, unless they came here to install.
+      if (Install.requested) const InstallCard(),
       if (_nearby && !area.precise && !_promptDismissed)
         _LocationPrompt(onUse: () => useMyLocation(context, ref), onDismiss: _dismissPrompt)
-      else
-        // One card at a time: the install offer waits until location is sorted.
+      else if (!Install.requested)
         const InstallCard(),
       _CategoryRail(selected: _category, onSelected: (c) => setState(() => _category = c)),
       if (slides.isNotEmpty) ...[

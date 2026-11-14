@@ -343,3 +343,16 @@ footer .fine { border-top: 1px solid #2a2a2e; margin-top: 50px; padding-top: 24p
   .price-table td { border: 0; padding: 2px 0; }
   .price-table td:first-child { font-weight: 700; }
 }
+
+/* "Get the app" QR code on computers */
+.get-app { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center;
+  background: rgba(20, 16, 18, .55); padding: 16px; }
+.get-app.open { display: flex; }
+.get-app-card { position: relative; background: #fff; color: #1d1b1e; border-radius: 22px; padding: 30px 30px 26px;
+  max-width: 380px; width: 100%; text-align: center; box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .5); }
+.get-app-card h3 { margin: 0 0 8px; font-size: 22px; }
+.get-app-card p { margin: 0 0 16px; color: #4a4a55; font-size: 15px; }
+.get-app-card img { display: block; margin: 0 auto 18px; width: 220px; height: 220px; padding: 10px;
+  border-radius: 14px; border: 1px solid #eee; background: #fff; }
+.get-app-close { position: absolute; top: 10px; right: 14px; border: 0; background: none; font-size: 28px;
+  line-height: 1; cursor: pointer; color: #6b6b76; }

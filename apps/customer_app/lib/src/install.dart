@@ -19,6 +19,10 @@ class Install {
 
   static bool get canOffer => kind == 'prompt' || kind == 'ios';
 
+  /// Opened from a "Get the app" button (app.mintadeal.com/?install=1): offer installing straight away, even if the
+  /// card was closed before.
+  static bool get requested => Uri.base.queryParameters['install'] == '1';
+
   static Future<bool> dismissed() async {
     final p = await SharedPreferences.getInstance();
     return p.getBool(_dismissedKey) ?? false;
@@ -99,9 +103,16 @@ class _InstallCardState extends State<InstallCard> {
     super.dispose();
   }
 
+  bool _stepsShown = false;
+
   Future<void> _check() async {
-    final show = Install.canOffer && !await Install.dismissed();
+    final show = Install.canOffer && (Install.requested || !await Install.dismissed());
     if (mounted && show != _show) setState(() => _show = show);
+    // Arriving from "Get the app" on an iPhone: show the steps without making them tap again.
+    if (show && Install.requested && Install.kind == 'ios' && !_stepsShown && mounted) {
+      _stepsShown = true;
+      await Install.showIosSteps(context);
+    }
   }
 
   Future<void> _install() async {
@@ -121,6 +132,10 @@ class _InstallCardState extends State<InstallCard> {
     return Card(
       margin: const EdgeInsets.only(top: 10, bottom: 4),
       color: scheme.secondaryContainer,
+      // Outlined when they came here to install, so the button is easy to find.
+      shape: Install.requested
+          ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: scheme.primary, width: 2))
+          : null,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 2, 0, 2),
         child: Row(children: [

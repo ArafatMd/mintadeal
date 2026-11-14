@@ -52,6 +52,44 @@
 
   // App links and business details from site-config.js.
   document.querySelectorAll("[data-app]").forEach((a) => (a.href = cfg.appUrl || a.href));
+  // "Get the app": phones go straight to the app, which offers to install itself. On a computer, show a QR code to
+  // scan with the phone, with a link to install on the computer instead.
+  const installUrl = (cfg.appUrl || "https://app.mintadeal.com") + "/?install=1";
+  const onComputer = () => window.matchMedia("(min-width: 900px) and (pointer: fine)").matches;
+  const openQr = () => {
+    let box = document.getElementById("get-app");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "get-app";
+      box.className = "get-app";
+      box.setAttribute("role", "dialog");
+      box.setAttribute("aria-modal", "true");
+      box.setAttribute("aria-label", "Get the Mintadeal app");
+      box.innerHTML =
+        '<div class="get-app-card">' +
+        '<button class="get-app-close" aria-label="Close">×</button>' +
+        "<h3>Get Mintadeal on your phone</h3>" +
+        "<p>Scan with your phone camera, then tap <b>Install</b> (Android) or follow the steps to <b>Add to Home Screen</b> (iPhone).</p>" +
+        '<img src="/assets/app-qr.svg" alt="QR code for app.mintadeal.com" width="220" height="220">' +
+        '<a class="btn btn-red" href="' + installUrl + '">Install on this computer instead</a>' +
+        "</div>";
+      document.body.appendChild(box);
+      const close = () => box.classList.remove("open");
+      box.addEventListener("click", (e) => { if (e.target === box) close(); });
+      box.querySelector(".get-app-close").addEventListener("click", close);
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+    }
+    box.classList.add("open");
+    box.querySelector(".get-app-close").focus();
+  };
+  document.querySelectorAll("[data-get-app]").forEach((a) => {
+    a.href = installUrl;
+    a.addEventListener("click", (e) => {
+      if (!onComputer()) return;
+      e.preventDefault();
+      openQr();
+    });
+  });
   document.querySelectorAll("[data-shop]").forEach((a) => (a.href = cfg.shopUrl || a.href));
   const todo = (el) => {
     el.textContent = "To be added";

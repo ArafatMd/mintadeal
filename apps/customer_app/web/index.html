@@ -1,46 +1,57 @@
 <!DOCTYPE html>
-<html>
+<html lang="en-IN">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
+  <!-- Replaced by the value of `flutter build --base-href`. -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Deals from shops and pop-up stalls near you in Bengaluru. Order, pick up or get it delivered.">
+  <meta name="theme-color" content="#FFF8F0">
 
-  <!-- iOS meta tags & icons -->
+  <!-- Installable app: Android and desktop read manifest.json; iPhone and iPad read these. -->
+  <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Mintadeal">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="favicon.png">
 
   <title>Mintadeal</title>
-  <link rel="manifest" href="manifest.json">
+
+  <script>
+    // Lets the app offer "Install" itself. Chrome and Edge on Android and computers announce that the app can be
+    // installed with `beforeinstallprompt`; iPhone and iPad have no such event, so the app shows the steps instead.
+    (function () {
+      var deferred = null;
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferred = e;
+      });
+      window.addEventListener('appinstalled', function () { deferred = null; });
+      // 'installed' when opened from the home screen; 'prompt' when the browser can install it; 'ios' on iPhone
+      // and iPad, where it is added from the Share menu; otherwise 'none'.
+      window.mintadealInstallKind = function () {
+        var standalone = window.navigator.standalone === true ||
+            window.matchMedia('(display-mode: standalone)').matches;
+        if (standalone) return 'installed';
+        if (deferred) return 'prompt';
+        var ua = window.navigator.userAgent;
+        var iOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        return iOS ? 'ios' : 'none';
+      };
+      window.mintadealInstallPrompt = function () {
+        if (!deferred) return Promise.resolve(false);
+        var e = deferred;
+        deferred = null;
+        e.prompt();
+        return e.userChoice.then(function (choice) { return choice.outcome === 'accepted'; });
+      };
+    })();
+  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

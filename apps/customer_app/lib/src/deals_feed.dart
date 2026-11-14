@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'all_deals_screen.dart';
 import 'area.dart';
+import 'install.dart';
 import 'cart_button.dart';
 import 'category_style.dart';
 import 'listing_detail_screen.dart';
@@ -202,7 +203,10 @@ class _DealsFeedState extends ConsumerState<DealsFeed> with WidgetsBindingObserv
     };
     final header = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (_nearby && !area.precise && !_promptDismissed)
-        _LocationPrompt(onUse: () => useMyLocation(context, ref), onDismiss: _dismissPrompt),
+        _LocationPrompt(onUse: () => useMyLocation(context, ref), onDismiss: _dismissPrompt)
+      else
+        // One card at a time: the install offer waits until location is sorted.
+        const InstallCard(),
       _CategoryRail(selected: _category, onSelected: (c) => setState(() => _category = c)),
       if (slides.isNotEmpty) ...[
         const SizedBox(height: 4),

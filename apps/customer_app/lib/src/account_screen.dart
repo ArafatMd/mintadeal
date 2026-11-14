@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mintadeal_core/mintadeal_core.dart';
 
 import 'area.dart';
+import 'install.dart';
 import 'sign_in.dart';
 
 class AccountScreen extends ConsumerWidget {
@@ -34,6 +35,7 @@ class AccountScreen extends ConsumerWidget {
             ),
           ],
           const Divider(),
+          const InstallTile(),
           ListTile(
             leading: const Icon(Icons.place_outlined),
             title: const Text('Your area'),

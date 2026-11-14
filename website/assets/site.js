@@ -107,8 +107,22 @@
       el.textContent = "+91 " + digits.replace(/(\d{5})(\d{5})/, "$1 $2");
       if (el.tagName === "A") el.href = key === "whatsapp" ? "https://wa.me/91" + digits : "tel:+91" + digits;
     } else if (key === "email" || key === "grievanceEmail") {
-      el.textContent = value;
-      if (el.tagName === "A") el.href = "mailto:" + value;
+      const addresses = value.split(",").map((v) => v.trim()).filter(Boolean);
+      if (addresses.length > 1 && el.tagName === "A") {
+        // Several addresses: one mail link each, separated by commas.
+        const span = document.createElement("span");
+        addresses.forEach((address, i) => {
+          if (i) span.append(", ");
+          const link = document.createElement("a");
+          link.href = "mailto:" + address;
+          link.textContent = address;
+          span.append(link);
+        });
+        el.replaceWith(span);
+        return;
+      }
+      el.textContent = addresses[0];
+      if (el.tagName === "A") el.href = "mailto:" + addresses[0];
     } else {
       el.textContent = value;
     }

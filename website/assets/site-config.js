@@ -12,7 +12,8 @@ window.MINTADEAL = {
   address: "",
   // Grievance officer, required for online marketplaces in India (Consumer Protection (E-Commerce) Rules, 2020).
   grievanceOfficer: "",
-  grievanceEmail: "",
+  // One address, or several separated by commas.
+  grievanceEmail: "help@mintadeal.com, customercare@mintadeal.com",
 
   appUrl: "https://app.mintadeal.com",
   shopUrl: "https://shop.mintadeal.com",

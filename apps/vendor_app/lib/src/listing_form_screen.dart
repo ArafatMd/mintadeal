@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -54,7 +56,49 @@ class _ListingFormScreenState extends ConsumerState<ListingFormScreen> {
     _validTo = l?.validTo;
     _modes = l?.fulfilmentModes.toSet() ?? _defaultModes(_type);
     _citywide = l?.citywide ?? false;
+    _initial = jsonEncode(_body());
   }
+
+  /// The form as it was opened, to tell whether anything changed.
+  late String _initial;
+
+  bool get _changed => jsonEncode(_body()) != _initial;
+
+  Future<void> _leave() async {
+    if (!_changed) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final active = widget.existing?.status == ListingStatus.ACTIVE;
+    final choice = await askUnsavedChanges(context, saveLabel: active ? 'Save' : 'Save draft');
+    if (!mounted) return;
+    switch (choice) {
+      case UnsavedChoice.save:
+        await _save(publish: false);
+      case UnsavedChoice.discard:
+        Navigator.of(context).pop();
+      case UnsavedChoice.keepEditing:
+        break;
+    }
+  }
+
+  Map<String, dynamic> _body() => {
+        'listingType': _type.name,
+        'title': _title.text.trim(),
+        'description': _description.text.trim(),
+        'category': _category.name,
+        'imageUrl': _imageUrl,
+        'priceMinor': parseRupees(_price.text),
+        'offerPriceMinor': parseRupees(_offerPrice.text),
+        'stock': _type == ListingType.PRODUCT && _trackStock ? int.tryParse(_stock.text.trim()) : null,
+        'capacityPerSlot': _type == ListingType.OFFER ? int.tryParse(_capacity.text.trim()) : null,
+        'terms': _terms.text.trim(),
+        'validFrom': _validFrom?.toUtc().toIso8601String(),
+        'validTo': _validTo?.toUtc().toIso8601String(),
+        'fulfilmentModes': [for (final m in _modes) m.name],
+        // Only a delivered product can go city-wide; the shop-wide switch covers every product anyway.
+        'citywide': _type == ListingType.PRODUCT && _modes.any((m) => m.isDelivery) && _citywide,
+      };
 
   @override
   void dispose() {
@@ -105,23 +149,7 @@ class _ListingFormScreenState extends ConsumerState<ListingFormScreen> {
       showMessage(context, 'Choose until when the offer is valid');
       return;
     }
-    final body = {
-      'listingType': _type.name,
-      'title': _title.text.trim(),
-      'description': _description.text.trim(),
-      'category': _category.name,
-      'imageUrl': _imageUrl,
-      'priceMinor': parseRupees(_price.text),
-      'offerPriceMinor': parseRupees(_offerPrice.text),
-      'stock': _type == ListingType.PRODUCT && _trackStock ? int.tryParse(_stock.text.trim()) : null,
-      'capacityPerSlot': _type == ListingType.OFFER ? int.tryParse(_capacity.text.trim()) : null,
-      'terms': _terms.text.trim(),
-      'validFrom': _validFrom?.toUtc().toIso8601String(),
-      'validTo': _validTo?.toUtc().toIso8601String(),
-      'fulfilmentModes': [for (final m in _modes) m.name],
-      // Only a delivered product can go city-wide; the shop-wide switch covers every product anyway.
-      'citywide': _type == ListingType.PRODUCT && _modes.any((m) => m.isDelivery) && _citywide,
-    };
+    final body = _body();
     setState(() => _saving = true);
     try {
       final api = ref.read(apiProvider);
@@ -146,7 +174,13 @@ class _ListingFormScreenState extends ConsumerState<ListingFormScreen> {
     final editing = widget.existing != null;
     final dates = DateFormat('d MMM yyyy');
     final productModes = _allowedProductModes;
-    return Scaffold(
+    // Leaving with unsaved changes asks first. Back always comes here; saving pops the screen itself.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !_saving) _leave();
+      },
+      child: Scaffold(
       appBar: AppBar(title: Text(editing ? 'Edit listing' : 'New listing')),
       body: Form(
         key: _form,
@@ -327,6 +361,7 @@ class _ListingFormScreenState extends ConsumerState<ListingFormScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

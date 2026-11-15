@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -72,6 +74,28 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
     _partnerDelivery = j['partnerDelivery'] as bool? ?? false;
     _pickup = j['pickup'] as bool? ?? true;
     _citywide = j['citywideDelivery'] as bool? ?? false;
+    _initial = jsonEncode(_payload());
+  }
+
+  /// The form as it was opened, to tell whether anything changed.
+  late String _initial;
+
+  Future<void> _leave() async {
+    if (jsonEncode(_payload()) == _initial) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final choice = await askUnsavedChanges(context,
+        saveLabel: widget.existing == null ? 'Submit for review' : 'Save');
+    if (!mounted) return;
+    switch (choice) {
+      case UnsavedChoice.save:
+        await _save();
+      case UnsavedChoice.discard:
+        Navigator.of(context).pop();
+      case UnsavedChoice.keepEditing:
+        break;
+    }
   }
 
   @override
@@ -204,7 +228,13 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
   Widget build(BuildContext context) {
     final registering = widget.existing == null;
     final anyDelivery = _selfDelivery || _partnerDelivery;
-    return Scaffold(
+    // Leaving with unsaved changes asks first (only where there is somewhere to go back to).
+    return PopScope(
+      canPop: !Navigator.of(context).canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !_saving) _leave();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(registering ? 'Register your shop' : 'Shop settings'),
         actions: [
@@ -367,6 +397,7 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

@@ -156,3 +156,25 @@ class FulfilmentChips extends StatelessWidget {
     );
   }
 }
+
+/// What to do with changes on a form someone is leaving.
+enum UnsavedChoice { save, discard, keepEditing }
+
+/// "You have unsaved changes": save them, discard them, or go back to the form. [saveLabel] names the save action,
+/// e.g. "Save draft".
+Future<UnsavedChoice> askUnsavedChanges(BuildContext context, {String saveLabel = 'Save'}) async {
+  final choice = await showDialog<UnsavedChoice>(
+    context: context,
+    builder: (context) => AlertDialog(
+      icon: const Icon(Icons.edit_note),
+      title: const Text('You have unsaved changes'),
+      content: const Text('Save them before you leave, or they will be lost.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, UnsavedChoice.discard), child: const Text('Discard')),
+        TextButton(onPressed: () => Navigator.pop(context, UnsavedChoice.keepEditing), child: const Text('Keep editing')),
+        FilledButton(onPressed: () => Navigator.pop(context, UnsavedChoice.save), child: Text(saveLabel)),
+      ],
+    ),
+  );
+  return choice ?? UnsavedChoice.keepEditing;
+}

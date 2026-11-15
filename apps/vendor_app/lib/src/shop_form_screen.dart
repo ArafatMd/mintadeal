@@ -333,8 +333,11 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
             if (anyDelivery) ...[
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Deliver across all of Bangalore'),
-                subtitle: const Text('Your products also appear in Deals in Bangalore'),
+                title: const Text('Deliver every product across Bengaluru'),
+                subtitle: Text(_citywide
+                    ? 'All your products appear in "All Bengaluru" and can be delivered anywhere in the city'
+                    : 'Off: you deliver within the distance below. To send only some products across Bengaluru, '
+                        'switch it on in those products instead.'),
                 value: _citywide,
                 onChanged: (v) => setState(() => _citywide = v),
               ),

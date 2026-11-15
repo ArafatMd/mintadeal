@@ -280,6 +280,9 @@ public class DiscoveryService {
                 .map(l -> lat != null && lng != null
                         ? toItem(new Candidate(l, vendor), lat, lng, followed)
                         : toCitywideItem(new Candidate(l, vendor), null, null, followed))
+                // A customer who is too far away does not see products they could neither get delivered nor pick up.
+                .filter(i -> lat == null || lng == null || i.listing().listingType() == ListingType.OFFER
+                        || i.deliverable() || i.pickupAvailable())
                 .toList();
         Double distance = lat != null && lng != null ? round(Geo.distanceKm(lat, lng,
                 vendor.getLatitude(), vendor.getLongitude())) : null;
@@ -301,7 +304,7 @@ public class DiscoveryService {
         Listing l = c.listing();
         Vendor v = c.vendor();
         double distance = Geo.distanceKm(lat, lng, v.getLatitude(), v.getLongitude());
-        boolean deliverable = canDeliver(l, v) && v.deliversTo(distance);
+        boolean deliverable = canDeliver(l, v) && v.deliversTo(distance, l.isCitywide());
         boolean pickup = l.getFulfilmentModes().contains(FulfilmentMode.PICKUP) && v.isPickup()
                 && distance <= props.nearbyRadiusKm();
         boolean venue = l.getFulfilmentModes().contains(FulfilmentMode.VENUE_QR) && distance <= props.nearbyRadiusKm();
@@ -313,7 +316,7 @@ public class DiscoveryService {
     private DiscoveryItem toCitywideItem(Candidate c, Double lat, Double lng, Set<UUID> followed) {
         Listing l = c.listing();
         Vendor v = c.vendor();
-        boolean deliverable = canDeliver(l, v) && v.isCitywideDelivery();
+        boolean deliverable = canDeliver(l, v) && (v.isCitywideDelivery() || l.isCitywide());
         boolean venue = l.getFulfilmentModes().contains(FulfilmentMode.VENUE_QR);
         Double distance = lat != null && lng != null
                 ? round(Geo.distanceKm(lat, lng, v.getLatitude(), v.getLongitude())) : null;

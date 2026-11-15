@@ -32,7 +32,8 @@ public final class ListingDtos {
             @Size(max = 2000) String terms,
             Instant validFrom,
             Instant validTo,
-            @NotEmpty Set<FulfilmentMode> fulfilmentModes) {
+            @NotEmpty Set<FulfilmentMode> fulfilmentModes,
+            Boolean citywide) {
     }
 
     public record StockUpdate(@PositiveOrZero Integer stock) {
@@ -46,14 +47,15 @@ public final class ListingDtos {
             VendorCategory category, String imageUrl, long priceMinor, Long offerPriceMinor,
             Integer discountPercent, Integer stock, Integer capacityPerSlot, String terms,
             Instant validFrom, Instant validTo, ListingStatus status, String removedReason,
-            List<FulfilmentMode> fulfilmentModes, Instant createdAt, Instant updatedAt) {
+            List<FulfilmentMode> fulfilmentModes, Instant createdAt, Instant updatedAt, boolean citywide) {
 
         public static ListingDto of(Listing l) {
             return new ListingDto(l.getId(), l.getVendorId(), l.getListingType(), l.getTitle(),
                     l.getDescription(), l.getCategory(), l.getImageUrl(), l.getPriceMinor(),
                     l.getOfferPriceMinor(), discountPercent(l), l.getStock(), l.getCapacityPerSlot(),
                     l.getTerms(), l.getValidFrom(), l.getValidTo(), l.getStatus(), l.getRemovedReason(),
-                    l.getFulfilmentModes().stream().sorted().toList(), l.getCreatedAt(), l.getUpdatedAt());
+                    l.getFulfilmentModes().stream().sorted().toList(), l.getCreatedAt(), l.getUpdatedAt(),
+                    l.isCitywide());
         }
 
         static Integer discountPercent(Listing l) {

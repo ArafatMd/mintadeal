@@ -77,6 +77,8 @@ public class Listing {
     @Column(nullable = false)
     private Instant updatedAt;
 
+    private boolean citywide;
+
     @Version
     private Long version;
 
@@ -221,6 +223,15 @@ public class Listing {
 
     public void setRemovedReason(String removedReason) {
         this.removedReason = removedReason;
+    }
+
+    /** Delivered anywhere in Bengaluru, even if the shop's city-wide delivery is off. */
+    public boolean isCitywide() {
+        return citywide;
+    }
+
+    public void setCitywide(boolean citywide) {
+        this.citywide = citywide;
     }
 
     public Set<FulfilmentMode> getFulfilmentModes() {

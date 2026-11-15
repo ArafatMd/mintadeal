@@ -174,7 +174,8 @@ class Listing {
         status = ListingStatus.parse(j['status']),
         removedReason = j['removedReason'] as String?,
         fulfilmentModes = [for (final m in j['fulfilmentModes'] as List) FulfilmentMode.parse(m)],
-        updatedAt = _date(j['updatedAt'])!;
+        updatedAt = _date(j['updatedAt'])!,
+        citywide = j['citywide'] as bool? ?? false;
 
   final String id;
   final String vendorId;
@@ -195,6 +196,9 @@ class Listing {
   final String? removedReason;
   final List<FulfilmentMode> fulfilmentModes;
   final DateTime updatedAt;
+
+  /// Delivered anywhere in Bengaluru, even when the shop's own city-wide delivery is off.
+  final bool citywide;
 
   int get effectivePriceMinor => offerPriceMinor ?? priceMinor;
 }

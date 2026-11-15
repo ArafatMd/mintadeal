@@ -126,6 +126,7 @@ class _ListingTileState extends ConsumerState<_ListingTile> {
                     [
                       l.listingType.label,
                       if (l.listingType == ListingType.PRODUCT) l.stock == null ? 'Stock not tracked' : '${l.stock} in stock',
+                      if (l.citywide) 'All Bengaluru',
                     ].join(' · '),
                     style: theme.textTheme.bodySmall,
                   ),

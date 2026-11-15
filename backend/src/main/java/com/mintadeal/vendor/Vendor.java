@@ -117,8 +117,16 @@ public class Vendor {
     }
 
     public boolean deliversTo(double distanceKm) {
+        return deliversTo(distanceKm, false);
+    }
+
+    /**
+     * Whether a product can be delivered this far: anywhere when the whole shop or this product ([productCitywide])
+     * delivers across Bengaluru, otherwise within the shop's delivery distance.
+     */
+    public boolean deliversTo(double distanceKm, boolean productCitywide) {
         return (selfDelivery || partnerDelivery)
-                && (citywideDelivery || distanceKm <= deliveryRadiusKm.doubleValue());
+                && (citywideDelivery || productCitywide || distanceKm <= deliveryRadiusKm.doubleValue());
     }
 
     public void touch(Instant now) {

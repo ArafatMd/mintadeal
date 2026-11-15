@@ -133,6 +133,13 @@ public class ListingService {
         l.setValidFrom(r.validFrom());
         l.setValidTo(r.validTo());
         l.setFulfilmentModes(r.fulfilmentModes());
+        boolean citywide = Boolean.TRUE.equals(r.citywide());
+        if (citywide && (r.listingType() != ListingType.PRODUCT
+                || r.fulfilmentModes().stream().noneMatch(FulfilmentMode::isDelivery))) {
+            throw ApiException.badRequest("citywide_needs_delivery",
+                    "Turn on delivery for this product to deliver it across Bengaluru");
+        }
+        l.setCitywide(citywide);
         l.touch(now);
     }
 

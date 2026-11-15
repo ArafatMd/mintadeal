@@ -32,6 +32,7 @@ class _ListingFormScreenState extends ConsumerState<ListingFormScreen> {
   DateTime? _validFrom;
   DateTime? _validTo;
   bool _trackStock = false;
+  bool _citywide = false;
   bool _saving = false;
 
   @override
@@ -52,6 +53,7 @@ class _ListingFormScreenState extends ConsumerState<ListingFormScreen> {
     _validFrom = l?.validFrom;
     _validTo = l?.validTo;
     _modes = l?.fulfilmentModes.toSet() ?? _defaultModes(_type);
+    _citywide = l?.citywide ?? false;
   }
 
   @override
@@ -117,6 +119,8 @@ class _ListingFormScreenState extends ConsumerState<ListingFormScreen> {
       'validFrom': _validFrom?.toUtc().toIso8601String(),
       'validTo': _validTo?.toUtc().toIso8601String(),
       'fulfilmentModes': [for (final m in _modes) m.name],
+      // Only a delivered product can go city-wide; the shop-wide switch covers every product anyway.
+      'citywide': _type == ListingType.PRODUCT && _modes.any((m) => m.isDelivery) && _citywide,
     };
     setState(() => _saving = true);
     try {
@@ -250,6 +254,20 @@ class _ListingFormScreenState extends ConsumerState<ListingFormScreen> {
                   title: Text(m.label),
                   value: _modes.contains(m),
                   onChanged: (on) => setState(() => on! ? _modes.add(m) : _modes.remove(m)),
+                ),
+              if (_modes.any((m) => m.isDelivery))
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.public),
+                  title: const Text('Deliver across all of Bengaluru'),
+                  subtitle: Text(widget.shop.citywideDelivery
+                      ? 'Your whole shop delivers across Bengaluru (My shop settings), so this product does too.'
+                      : _citywide
+                          ? 'Customers anywhere in Bengaluru can order it. Shown in "All Bengaluru" and on mintadeal.com.'
+                          : 'Off: only customers within your delivery distance '
+                              '(${widget.shop.json['deliveryRadiusKm'] ?? 0} km) see and order it.'),
+                  value: widget.shop.citywideDelivery || _citywide,
+                  onChanged: widget.shop.citywideDelivery ? null : (v) => setState(() => _citywide = v),
                 ),
             ] else ...[
               const SizedBox(height: 16),

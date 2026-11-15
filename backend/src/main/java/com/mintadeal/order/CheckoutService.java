@@ -272,17 +272,29 @@ public class CheckoutService {
             modes.remove(FulfilmentMode.PICKUP);
         }
         boolean hadDelivery = modes.stream().anyMatch(FulfilmentMode::isDelivery);
+        // Items this shop delivers only near the shop, when the address is further away.
+        List<String> tooFar = new ArrayList<>();
         if (address != null && hadDelivery) {
             double km = Geo.distanceKm(address.latitude(), address.longitude(), vendor.getLatitude(),
                     vendor.getLongitude());
-            if (!vendor.deliversTo(km)) {
+            lines.stream().filter(l -> !vendor.deliversTo(km, l.listing().isCitywide()))
+                    .forEach(l -> tooFar.add(l.listing().getTitle()));
+            if (!tooFar.isEmpty()) {
                 modes.removeIf(FulfilmentMode::isDelivery);
             }
         }
         List<FulfilmentMode> available = List.copyOf(modes);
         FulfilmentMode selected = requested != null && modes.contains(requested) ? requested
                 : available.isEmpty() ? null : available.getFirst();
-        if (selected == null) {
+        boolean someDeliverable = !tooFar.isEmpty() && tooFar.size() < lines.size();
+        if (someDeliverable && (selected == null || requested == null || requested.isDelivery())) {
+            // Say exactly which items stop delivery, rather than quietly switching the order to pickup.
+            String km = vendor.getDeliveryRadiusKm().stripTrailingZeros().toPlainString();
+            problems.add(String.join(", ", tooFar) + (tooFar.size() == 1 ? " is" : " are") + " only delivered within "
+                    + km + " km of " + vendor.getDisplayName() + ". Remove "
+                    + (tooFar.size() == 1 ? "it" : "them") + " to get the rest delivered"
+                    + (modes.contains(FulfilmentMode.PICKUP) ? ", or choose pickup." : "."));
+        } else if (selected == null) {
             problems.add(hadDelivery
                     ? vendor.getDisplayName() + " does not deliver to your address"
                     : "These items from " + vendor.getDisplayName() + " cannot be ordered together. "
